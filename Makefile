@@ -20,6 +20,7 @@ all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
 	$(CPP) $(CPPFLAGS) $(addprefix $(BUILDDIR)/, $(OBJECTS)) -o $(BUILDDIR)/$@ $(LIBS)
+	ln -fs build/app app
 
 
 $(OBJECTS): %.o: %.c 
