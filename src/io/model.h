@@ -5,24 +5,24 @@
 
 typedef struct
 {
-	GLfloat* vertices; 
+	GLfloat* verts; 
 	GLfloat* uvs; 
-	GLfloat* normals;
+	GLfloat* norms;
 	
 	/* NULL or First element is -1 if no indices used: only raw positions */
 
-	GLuint* vert_indices; 
-	GLuint* uv_indices; 
-	GLuint* norm_indices;
+	GLuint* vert_inds; 
+	GLuint* uv_inds; 
+	GLuint* norm_inds;
 
 	/* num of positions if (only raw vertices) condition met, else number of indices of positions  */
 
-	size_t vertices_count;
-	size_t uvs_count;
-	size_t normals_count;
-	size_t vert_indices_count;
-	size_t uv_indices_count;
-	size_t norm_indices_count;
+	size_t verts_cnt;
+	size_t uvs_cnt;
+	size_t norms_cnt;
+	size_t vert_ind_cnt;
+	size_t uv_ind_cnt;
+	size_t norm_ind_cnt;
 }
 obj_t;
 

@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <time.h>
+#include <errno.h>
 
 static FILE* output;
 
@@ -18,7 +19,7 @@ init_log(const char* filename){
 		if (output == NULL)
 		{
 			output = stderr;
-			wlog("ERROR", "Log file couldn't be opened.");
+			wflog("ERROR", "Log file \"%s\" couldn't be opened. (errno: %d)", filename, errno);
 		}
 	}
 	else

@@ -32,12 +32,10 @@ loadOBJ(const char* filename, obj_t* object)
 	FILE* f;
 	size_t vi=0, ui=0, ni=0; /* vertex, uv, and normal arrays indices*/
 	size_t ivi=0, iui=0, ini=0;
-	size_t argnum;
 	size_t i;
 	char header[24];
 	char buffer[1000];
 	char newline[2];
-	GLuint iinput[9];
 	char *prevendp, *endp;
 
 
@@ -81,9 +79,9 @@ loadOBJ(const char* filename, obj_t* object)
 		if (ISHEAD ("#"))
 				continue;
 		
-		if ( ISHEAD ("v") && object->vertices != NULL )
+		if ( ISHEAD ("v") && object->verts != NULL )
 			{
-				FILLFLOAT(object->vertices, vi, 3);
+				FILLFLOAT(object->verts, vi, 3);
 				continue;
 			}
 
@@ -93,9 +91,9 @@ loadOBJ(const char* filename, obj_t* object)
 				continue;
 			}
 
-		if ( ISHEAD ("vn") && object->normals != NULL )
+		if ( ISHEAD ("vn") && object->norms != NULL )
 			{
-				FILLFLOAT(object->normals, ni, 3);
+				FILLFLOAT(object->norms, ni, 3);
 				continue;
 			}
 		if ( ISHEAD ("f") )
@@ -106,22 +104,22 @@ loadOBJ(const char* filename, obj_t* object)
 				for (i=0; i<3; ++i)
 				{
 					/* TODO CORRECTLY*/
-					READUINT(object->vert_indices, ivi);
+					READUINT(object->vert_inds, ivi);
 					if (*endp == ' ')
 						continue;
 					prevendp = ++endp;
 					// printf("<%s>\n", endp);
 					if(*endp != '/')
 						{
-							READUINT(object->uv_indices, iui);
+							READUINT(object->uv_inds, iui);
 						}
 					prevendp = ++endp;
 					if(!isspace(*endp) && *endp!='\n')
 						{
-							READUINT(object->norm_indices, ini);
+							READUINT(object->norm_inds, ini);
 						}
 					prevendp = ++endp;
-					// printf("f: %u %u %u\n", object->vert_indices[ivi-1], object->uv_indices[iui-1], object->norm_indices[ini-1]);
+					// printf("f: %u %u %u\n", object->vert_inds[ivi-1], object->uv_inds[iui-1], object->norm_inds[ini-1]);
 					// scanf("%*c");
 				}
 				// printf("%lu %lu %lu\n", ivi, iui, ini);
@@ -129,22 +127,22 @@ loadOBJ(const char* filename, obj_t* object)
 			}
 	}
 
-	object->vertices_count 	=	vi;
-	object->uvs_count 		=	ui;
-	object->normals_count 	= 	ni;
+	object->verts_cnt 	=	vi;
+	object->uvs_cnt 		=	ui;
+	object->norms_cnt 	= 	ni;
 
-	object->vert_indices_count	= ivi;
-	object->uv_indices_count 		= iui;
-	object->norm_indices_count	= ini;
+	object->vert_ind_cnt	= ivi;
+	object->uv_ind_cnt 		= iui;
+	object->norm_ind_cnt	= ini;
 
 	wflog("INFO", "Read %s with %u nodes and %u faces", filename, vi, (ivi==0)?vi/3:ivi/3);
 
 	/*printf("Indices:\n");
 	for(i=0; i<ivi; i+=3)
 		printf("%lu: %u/%u/%u %u/%u/%u %u/%u/%u\n", 
-					i, object->vert_indices[i+0], object->uv_indices[i+0], object->norm_indices[i+0],
-					object->vert_indices[i+1], object->uv_indices[i+1], object->norm_indices[i+1],
-					object->vert_indices[i+2], object->uv_indices[i+2], object->norm_indices[i+2]
+					i, object->vert_inds[i+0], object->uv_inds[i+0], object->norm_inds[i+0],
+					object->vert_inds[i+1], object->uv_inds[i+1], object->norm_inds[i+1],
+					object->vert_inds[i+2], object->uv_inds[i+2], object->norm_inds[i+2]
 					);
 	
 	printf("\nVertices:\n");

@@ -36,25 +36,22 @@ static void print_movement(movement_t *m);
 static void rotateCamera(GLuint programID, movement_t *player , int32_t player_update );
 
 
-#define ELNUM 15000
+#define ELNUM 20000
 
 
 obj_t init_obj(){
 	obj_t object;
 	IO_stat_t status;
 
-	GLfloat *vertices, *uvs, *normals;
-	GLuint *vert_indices, *uv_indices, *norm_indices;
+	object.verts = (GLfloat*) malloc( (sizeof(GLfloat)+sizeof(GLint))*3*ELNUM);
+	object.uvs = &(object.verts)[ELNUM];
+	object.norms = &(object.verts)[2*ELNUM];
 
-	object.vertices = (GLfloat*) malloc( (sizeof(GLfloat)+sizeof(GLint))*3*ELNUM);
-	object.uvs = &(object.vertices)[ELNUM];
-	object.normals = &(object.vertices)[2*ELNUM];
+	object.vert_inds = (GLuint*) &(object.verts)[3*ELNUM];
+	object.uv_inds = (GLuint*) &(object.vert_inds)[ELNUM];
+	object.norm_inds = (GLuint*) &(object.vert_inds)[2*ELNUM];
 
-	object.vert_indices = (GLuint*) &(object.vertices)[3*ELNUM];
-	object.uv_indices = (GLuint*) &(object.vert_indices)[ELNUM];
-	object.norm_indices = (GLuint*) &(object.vert_indices)[2*ELNUM];
-
-	status = loadOBJ("res/obj/cube.obj", &object);
+	status = loadOBJ("res/obj/shuttle_tr.obj", &object);
 	printf("Status ID: %d\n", status);
 	if (status != IO_OK)
 	{
@@ -70,16 +67,18 @@ int main( int argc, char* argv[] ){
 	int32_t events_status;
 
 	GLuint programID; 
-	GLuint VBO; 
-	GLuint IBO;
+	GLuint b_vert;
+	GLuint b_ind_vert;
+	GLuint b_norm; 
+	GLuint b_ind_norm;
 	GLuint VAO;
-	GLuint uvBO;
+	// GLuint ub_vert;
 
 	GLint vertexPos2DLocation;
-	GLint vertexUVLocation;
-	GLint samplerLocation;
+	// GLint vertexUVLocation;
+	// GLint samplerLocation;
 
-	GLuint brick_textID;
+	// GLuint brick_textID;
 	
 	obj_t object;
 
@@ -91,21 +90,35 @@ int main( int argc, char* argv[] ){
 	/* VAO */
 	glGenVertexArrays(1, &VAO);
 	glBindVertexArray(VAO);
-	/* VBO */
-	glGenBuffers( 1, &VBO );
-	glBindBuffer( GL_ARRAY_BUFFER, VBO );
+	/* b_vert */
+	glGenBuffers( 1, &b_vert );
+	glBindBuffer( GL_ARRAY_BUFFER, b_vert );
 	glBufferData( 	GL_ARRAY_BUFFER, 
-						object.vertices_count * sizeof(object.vertices[0]), 
-						object.vertices, 
+						object.verts_cnt * sizeof(object.verts[0]), 
+						object.verts, 
 						GL_STATIC_DRAW );
 
-	/* IBO */
-	glGenBuffers( 1, &IBO);
-	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, IBO );
-	glBufferData( 	GL_ELEMENT_ARRAY_BUFFER, 
-						object.vert_indices_count * sizeof(object.vert_indices[0]), 
-						object.vert_indices, 
+	glGenBuffers( 1, &b_norm );
+	glBindBuffer( GL_ARRAY_BUFFER, b_norm );
+	glBufferData( GL_ARRAY_BUFFER,
+						object.norms_cnt * sizeof(object.norms[0]),
+						object.norms,
 						GL_STATIC_DRAW );
+
+	/* b_ind_vert */
+	glGenBuffers( 1, &b_ind_vert);
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, b_ind_vert );
+	glBufferData( 	GL_ELEMENT_ARRAY_BUFFER, 
+						object.vert_ind_cnt * sizeof(object.vert_inds[0]), 
+						object.vert_inds, 
+						GL_STATIC_DRAW );
+
+	glGenBuffers(1, &b_ind_norm);
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, b_ind_norm);
+	glBufferData( 	GL_ELEMENT_ARRAY_BUFFER,
+						object.norm_ind_cnt*sizeof(object.norm_inds[0]),
+						object.norm_inds,
+						GL_STATIC_DRAW);
 
 	glClearColor(0.5, 0, 0.5, 1);
 	glUseProgram( programID );
@@ -116,13 +129,29 @@ int main( int argc, char* argv[] ){
 	#define GET_ATTRIB(i, s) 	if( (i = glGetAttribLocation( programID, s )) == -1) 			\
 											ERRX_GL( 1, "No " s " found in shader");					
 
+	GET_ATTRIB(vertexPos2DLocation, "Normal");
+	glEnableVertexAttribArray( vertexPos2DLocation );
+	glBindBuffer(GL_ARRAY_BUFFER, b_norm);
+	glVertexAttribPointer( vertexPos2DLocation, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+
 	GET_ATTRIB(vertexPos2DLocation, "Pos");	
 	glEnableVertexAttribArray( vertexPos2DLocation );
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBindBuffer(GL_ARRAY_BUFFER, b_vert);
 	glVertexAttribPointer( vertexPos2DLocation, 3, GL_FLOAT, GL_FALSE, 0, NULL);
 	
-	//glEnable(GL_DEPTH_TEST);
-	// glEnable(GL_CULL_FACE);
+	glBindBuffer( GL_ARRAY_BUFFER, b_vert );
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, b_ind_vert );
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+
+	printf("vi = %lu | ui = %lu | ni = %lu\nivi = %lu | iui = %lu | ini = %lu\n",
+				object.verts_cnt, //(long unsigned) object.vert_inds[300 +1],
+				object.uvs_cnt, //(long unsigned) object.vert_inds[300 +2],
+				object.norms_cnt, //(long unsigned) object.vert_inds[300 +3],
+				object.vert_ind_cnt, //(long unsigned) object.vert_inds[300 +4],
+				object.uv_ind_cnt, //(long unsigned) object.vert_inds[300 +5],
+				object.norm_ind_cnt //(long unsigned) object.vert_inds[300 +6]
+);
 	while(1){
 
 		events_status = handleEvents( &player );
@@ -138,7 +167,7 @@ int main( int argc, char* argv[] ){
 
 		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 		glDrawElements( 	GL_TRIANGLES, 
-								3*(object.vert_indices_count) , //sizeof(testLevelIndex)/sizeof(testLevelIndex[0]), 
+								object.vert_ind_cnt, //sizeof(testLevelIndex)/sizeof(testLevelIndex[0]), 
 								GL_UNSIGNED_INT, 
 								NULL);
 								
@@ -220,7 +249,13 @@ static int32_t handleEvents( movement_t* player ){
 
 
 	player->camX -= player-> camX_sens * ((GLfloat) xrel)/WIDTH;
-	player->camY -= player-> camY_sens * ((GLfloat) yrel)/HEIGHT;
+	player->camY -= fmax(
+								fmin(
+									player-> camY_sens * ((GLfloat) yrel)/HEIGHT,
+									3.14f/2),
+								-3.14f/2);
+	// player->camY = player->camY<3.14/2?player->camY:3.14/2;
+	// player->camY = player->camY>-3.14/2?player->camY:-3.14/2;
 	player->fb = fmax(-player->speedFB, fmin(player->speedFB, player->fb + player->accFB * 2 * (f-b)));
 	player->rl = fmax(-player->speedRL, fmin(player->speedRL, player->rl + player->accRL * 2 * (r-l)));
 	player->ud = fmax(-player->speedUD, fmin(player->speedUD, player->ud + player->accUD * 2 * (u-d)));
@@ -237,13 +272,19 @@ static void rotateCamera(GLuint programID, movement_t *player , int32_t player_u
 	//static float last_ticks = ((float) clock());
 	//float current_ticks;
 	//float cycle_time;
+	//current_ticks = ((float) clock());
+	//cycle_time = (current_ticks- last_ticks)/CLOCKS_PER_SEC;
 
-	static GLfloat verticalAngle=0.0f, horizontalAngle=3.14f;
 	//static GLfloat mousespeed = 2.5f;
+	static GLfloat angle = 0.0f;
+
+
+	GLfloat verticalAngle, horizontalAngle;
 
 	static GLfloat FoV = FOV;
 	
 	static glm::vec3 Position = glm::vec3( 0, 4, 5 );
+	static glm::vec3 realUp = glm::vec3(0, 1, 0);
 
 	glm::vec3 Up;
 	glm::vec3 Direction;
@@ -251,15 +292,10 @@ static void rotateCamera(GLuint programID, movement_t *player , int32_t player_u
 
 	glm::mat4 Model, View, Projection;
 	glm::mat4 MVP;
-	static glm::vec3 realUp = glm::vec3(0, 1, 0);
-
-	glUseProgram(programID);
-
-	//current_ticks = ((float) clock());
-	//cycle_time = (current_ticks- last_ticks)/CLOCKS_PER_SEC;
 
 
-	/* ??? */
+	angle+=0.01;
+
 	horizontalAngle = player->camX ;
 	verticalAngle 	= 	player->camY ;
 
@@ -271,12 +307,13 @@ static void rotateCamera(GLuint programID, movement_t *player , int32_t player_u
 
 	Right = glm::vec3(
 					sin(horizontalAngle - 3.14f/2.0f),
-	0,
-	cos(horizontalAngle - 3.14f/2.0f)
+					0,
+					cos(horizontalAngle - 3.14f/2.0f)
 	);
+
 	Up = glm::cross( Right, Direction );
 
-	Position += Direction *	(player->fb);
+	Position += glm::normalize(glm::cross(realUp, Right)) *	(player->fb);
 	Position += Right * 		(player->rl);
 	Position += realUp * 			(player->ud);
 
@@ -288,12 +325,18 @@ static void rotateCamera(GLuint programID, movement_t *player , int32_t player_u
 	View = glm::lookAt(
 							Position,		   
 							Position+Direction, 
-							Up				  
-	);		
+							realUp				  
+	);
 
-	MVP = Projection * View * Model;
+	MVP = Projection * View; // * Model;
+	
+	glUseProgram(programID);
 	GLint mvp_loc = glGetUniformLocation( programID, "MVP" );
 	glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, &MVP[0][0]);
+
+	GLint dir_loc = glGetUniformLocation(programID, "Dir");
+	// glUniform3fv(dir_loc, 1, &Direction[0]);
+	glUniform3f(dir_loc, 3*cos(angle), 3, 3*sin(angle));
 
 }
 
@@ -321,8 +364,6 @@ static GLuint getShaderProgram(){
 					NULL, NULL,
 					&programID
 				); 
-
-	fprintf(stdout, "[SHADER CACHE]\n");
 	__debug_print_shader_cache__(stdout);
 
 	if( IO_OK != io_status){

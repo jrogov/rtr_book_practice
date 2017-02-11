@@ -9,7 +9,8 @@ layout(triangle_strip, max_vertices = 3) out;
 // wireframe
 // layout(line_strip, max_vertices = 6) out;
 
-out vec3 normal;
+in vec3 normal[];
+out vec3 norm;
 
 void pass_through();
 void raycast();
@@ -19,14 +20,8 @@ void wireframe();
 // why cant i fucking pass this stupid UV
 void main()
 {
-	normal = vec3(1.0, 1.0, 1.0);
 	// wireframe();
 	pass_through();
-	normal = cross(
-			gl_in[1].gl_Position.xyz 
-			- gl_in[0].gl_Position.xyz, 
-			gl_in[2].gl_Position.xyz 
-			- gl_in[0].gl_Position.xyz);
 }
 
 void pass_through(){
@@ -34,6 +29,7 @@ void pass_through(){
 		gl_Position = gl_in[i].gl_Position;
 		//gl_PointSize = gl_in[i].gl_PointSize;
   		//gl_ClipDistance = gl_in[i].gl_ClipDistance;;
+		norm = normal[i];
 		EmitVertex();
 	}
 	EndPrimitive();
@@ -42,8 +38,10 @@ void pass_through(){
 void wireframe(){
 	for (int i=1; i< gl_in.length(); ++i){
 		gl_Position = gl_in[i-1].gl_Position;
+		norm=normal[i-1];
 		EmitVertex();
 		gl_Position = gl_in[i].gl_Position;
+		norm=normal[i];
 		EmitVertex();
 		EndPrimitive();
 	}
