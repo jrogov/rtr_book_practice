@@ -9,10 +9,9 @@
 #include <GL/glew.h>
 
 #include "shader.h"
+#include "hash.h"
+#include "log.h"
 
-/*
-NOTE: ONLY ASCII-chars in shader files
-*/
 
 /*
 TODO:
@@ -24,8 +23,6 @@ fcreate_program(filenames) - for standalone shaders
 #define BUFSIZE (128 * 1024)
 
 
-typedef uint64_t hash_t;
-
 struct shader_file_t{
 	hash_t hash;
 	time_t mtime;
@@ -36,21 +33,12 @@ struct shader_file_t{
 
 static struct shader_file_t* sf_head = NULL;
 
-
-static hash_t calc_shash(const char* s){
-	hash_t h = 0;
-	int i;
-	for (i=0; s[i]!='\0'; i++)
-		h = s[i]
-				+ (h << ( (6 ^ i) & 7))
-				+ (h << 16 )
-				- (h>>2);
-	return h;
-}
-
-
-
 static IO_stat_t load_shader_source(const char* filename, GLuint *shader, GLenum type);
+
+
+
+
+
 
 IO_stat_t load_shader(const char* filename, GLuint *shader, GLenum type){
 	struct stat buf;
@@ -76,24 +64,37 @@ IO_stat_t load_shader(const char* filename, GLuint *shader, GLenum type){
 				*shader = shader_file->shader;
 				return IO_OK;
 			}
-			/* else reload it */
+			/* else re-/load it */
 			else
 				break;
 		}
 		shader_file = shader_file -> next;
 	}
 
-	/* load shader if not found/reload if changed*/
+	/* load shader if not found/reload if changed */
 	io_status = load_shader_source(filename, &compiled_shader, type);
 
-	if (io_status!=IO_OK)
-		return io_status;
 
-	/* if shader entry NOT found / first entry */
+	/* Attention: even though returned IO_OK, shader isn't reloaded: returned prev loaded one */
+	if (io_status!=IO_OK)
+	{
+		if (shader_file != NULL){
+			*shader = shader_file-> shader;
+			return IO_OK;
+		}
+		return io_status;
+	}
+
+	/* if shader entry NOT found / INITIAL entry */
 	if (shader_file == NULL ){
 		shader_file = (struct shader_file_t *) malloc(sizeof(*shader_file));
 		shader_file -> next	= sf_head;
 		sf_head = shader_file;
+	}
+	/* else delete shader at shader_file */
+	else
+	{
+		glDeleteShader(shader_file-> shader);
 	}
 	shader_file -> hash 	= hash;
 	shader_file -> mtime = mtime;
@@ -136,81 +137,81 @@ void __debug_print_shader_cache__(FILE* f){
 	}
 }
 
-IO_stat_t fload_program(
-		const char* vertex_sfile,
-		const char* fragment_sfile,
-		const char* geometry_sfile,
-		const char* tess_control_sfile,
-		const char* tess_evaluation_sfile,
-		GLuint *program
-		){
-
+IO_stat_t 
+fload_program( sprogram_info_t* info, GLuint *program)
+{
 	GLuint programID;
 	GLuint vertexShader, geometryShader, fragmentShader, tessControlShader, tessEvalShader;
 	GLint status;
 
+	/* size for compile-error in case if sprogram_info_t changed */
+	GLenum shader_types[sizeof(sprogram_info_t)/sizeof(const char*)] = {
+		GL_VERTEX_SHADER,
+		GL_FRAGMENT_SHADER,
+		GL_GEOMETRY_SHADER,
+		GL_TESS_CONTROL_SHADER,
+		GL_TESS_EVALUATION_SHADER
+	};
+
+	/* corresponding to types above */
+	GLuint shaders[sizeof(shader_types)/sizeof(shader_types[0])];
+
 	IO_stat_t io_status;
+	const char** info_name_p;
+	size_t i; 
 
 	programID = glCreateProgram();
 
-	#define REPORT() if(io_status != IO_OK) return io_status;
+	info_name_p = (const char**) info;
+	for( i = 0; i < sizeof(shader_types)/sizeof(shader_types[0]); ++i)
+	{
 
-	if(NULL != vertex_sfile)
-		io_status = load_shader(vertex_sfile, &vertexShader, GL_VERTEX_SHADER);
-	REPORT();
-	glAttachShader( programID, vertexShader );
+		if(NULL != *info_name_p)
+			io_status = load_shader(*info_name_p, &shaders[i], shader_types[i]);
+		
+		if(io_status != IO_OK) 
+		{
+			wlog_shader_infolog(programID); 
+			return io_status;
+		}		
+		
+		glAttachShader( programID, shaders[i] );
+		++info_name_p;
+	}
 
-
-	if(NULL != fragment_sfile)
-		io_status = load_shader(fragment_sfile, &fragmentShader, GL_FRAGMENT_SHADER);
-	REPORT();
-	glAttachShader( programID, fragmentShader );
-
-	if(NULL != geometry_sfile)
-		io_status = load_shader(geometry_sfile, &geometryShader, GL_GEOMETRY_SHADER);
-	REPORT();
-	glAttachShader( programID, geometryShader );
-
-	if(NULL != tess_control_sfile)
-		io_status = load_shader(tess_control_sfile, &tessControlShader, GL_TESS_CONTROL_SHADER);
-	REPORT();
-	glAttachShader( programID, tessControlShader);
-
-	if(NULL != tess_evaluation_sfile)
-		io_status = load_shader(tess_evaluation_sfile, &tessEvalShader, GL_TESS_EVALUATION_SHADER);
-	REPORT();
-	glAttachShader( programID, tessEvalShader);
-
-	glLinkProgram( programID );
+		glLinkProgram( programID );
 	glGetProgramiv( programID, GL_LINK_STATUS, &status);
 	if ( status != GL_TRUE ) {
-    *program = programID;
     return IO_EXT_FUNC_ERROR;
   	}
 
+
+	*program = programID;
+	return IO_OK;
+
 	/* clear this mess */
   /*
-	if (NULL != vertex_sfile) {
+	if (NULL != info->vertex_shader_file) {
 		glDetachShader(programID, vertexShader);
 		glDeleteShader(vertexShader);
 	}
 
-	if (NULL != geometry_sfile) {
+	if (NULL != info->geometry_shader_file) {
 		glDetachShader(programID, fragmentShader);
 		glDeleteShader(fragmentShader);
 	}
 
-	if (NULL != fragment_sfile) {
+	if (NULL != info->fragment_shader_file) {
 		glDetachShader(programID, geometryShader);
 		glDeleteShader(geometryShader);
 	}
 
-	if (NULL != tess_control_sfile) {
+	if (NULL != info->tess_control_shader_file) {
 		glDetachShader(programID, tessEvalShader);
 		glDeleteShader(tessEvalShader);
 	}
 
-	if (NULL != tess_evaluation_sfile) {
+	if (NULL != info->tess_evaluation_shader_file) {
 		glDetachShader(programID, tessControlShader);
 		glDeleteShader(tessControlShader);
 	}
@@ -246,7 +247,8 @@ static IO_stat_t load_shader_source(const char* filename, GLuint *shader, GLenum
 
 	f = fopen(filename, "r");
 	if( NULL == f ) {
-		/*perror("Shader loading error: ");*/
+		
+		wflog( "Failed to load shader %s: %s", filename, str_ioerror(get_last_iostat()) ); 
 		switch(errno){
 			case ENOENT: return IO_NO_FILE_ERROR;
 			case ENAMETOOLONG: return IO_NAME_LENGTH_ERROR;
@@ -264,12 +266,9 @@ static IO_stat_t load_shader_source(const char* filename, GLuint *shader, GLenum
 
 	glCompileShader( s );
 	glGetShaderiv( s, GL_COMPILE_STATUS, &status );
-
-	/* DEBUG INFO! DELETE! ??? */
-	log = buffer;
-	glGetShaderInfoLog(s, 1000, NULL, log);
+	
 	if( status != GL_TRUE ){
-		printf("%s\n", log);
+		wlog_shader_infolog(s);
 		return IO_FORMAT_ERROR;
 	}
 

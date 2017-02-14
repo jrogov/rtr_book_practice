@@ -13,6 +13,9 @@
 #include <SDL2/SDL.h>
 
 #include "main.h"
+#include "init.h"
+#include "camera.h"
+
 #include "io/shader.h"
 #include "io/texture.h"
 #include "io/model.h"
@@ -20,51 +23,45 @@
 
 #include <err.h>
 
-#define ERRX_SDL(code, s) 				errx( code, s ": %s\n", SDL_GetError( ))
-#define ERRX_GLEW(code, s, error) 	errx( code, s ": %s\n", glewGetErrorString( error ));
-#define ERRX_GL(code,s)
-
 #include "config.h"
 
 #define STRINGIFY2(x) #x
 #define STRINGIFY(x) STRINGIFY2(x)
 
 static GLuint getShaderProgram();
-static void initWindow( );
-static SDL_Window* initWindow( uint32_t width, uint32_t height );
 static void print_movement(movement_t *m);
 static void rotateCamera(GLuint programID, movement_t *player , int32_t player_update );
 
 
 #define ELNUM 40000
 
-
-obj_t init_obj(){
-	obj_t object;
+model_t init_obj(){
+	model_t model;
 	IO_stat_t status;
 
-	object.verts = (GLfloat*) malloc( (sizeof(GLfloat)+sizeof(GLint))*3*ELNUM);
-	object.uvs = &(object.verts)[ELNUM];
-	object.norms = &(object.verts)[2*ELNUM];
+	model.verts = (GLfloat*) malloc( (sizeof(GLfloat)+sizeof(GLint))*3*ELNUM);
+	model.uvs = &(model.verts)[ELNUM];
+	model.norms = &(model.verts)[2*ELNUM];
 
-	object.vert_inds = (GLuint*) &(object.verts)[3*ELNUM];
-	object.uv_inds = (GLuint*) &(object.vert_inds)[ELNUM];
-	object.norm_inds = (GLuint*) &(object.vert_inds)[2*ELNUM];
+	model.vert_inds = (GLuint*) &(model.verts)[3*ELNUM];
+	model.uv_inds = (GLuint*) &(model.vert_inds)[ELNUM];
+	model.norm_inds = (GLuint*) &(model.vert_inds)[2*ELNUM];
 
-	status = loadOBJ("res/obj/pumpkin_tr.obj", &object);
+	status = loadOBJ("res/obj/pumpkin_tr.obj", &model);
 	printf("Status ID: %d\n", status);
 	if (status != IO_OK)
 	{
 		exit(0);
 	}
 
-	return object;
+	return model;
 }
 
 int main( int argc, char* argv[] ){
 
 	SDL_Window *window;
 	int32_t events_status;
+	IO_stat_t io_status;
 
 	GLuint programID;
 	GLuint b_vert;
@@ -80,12 +77,16 @@ int main( int argc, char* argv[] ){
 
 	// GLuint brick_textID;
 
-	obj_t object;
+	model_t model;
 
 	init_log(NULL);
 	window = initWindow(WIDTH, HEIGHT);
-	programID = getShaderProgram();
-	object = init_obj();
+	io_status = fload_program(&shader_info, &programID);
+	__debug_print_shader_cache__(stdout);
+	if( io_status != IO_OK )
+		return 1;
+
+	model = init_obj();
 
 	/* VAO */
 	glGenVertexArrays(1, &VAO);
@@ -94,40 +95,40 @@ int main( int argc, char* argv[] ){
 	glGenBuffers( 1, &b_vert );
 	glBindBuffer( GL_ARRAY_BUFFER, b_vert );
 	glBufferData( 	GL_ARRAY_BUFFER,
-						object.verts_cnt * sizeof(object.verts[0]),
-						object.verts,
+						model.verts_cnt * sizeof(model.verts[0]),
+						model.verts,
 						GL_STATIC_DRAW );
 
 	glGenBuffers( 1, &b_norm );
 	glBindBuffer( GL_ARRAY_BUFFER, b_norm );
 	glBufferData( GL_ARRAY_BUFFER,
-						object.norms_cnt * sizeof(object.norms[0]),
-						object.norms,
+						model.norms_cnt * sizeof(model.norms[0]),
+						model.norms,
 						GL_STATIC_DRAW );
 
 	/* b_ind_vert */
 	glGenBuffers( 1, &b_ind_vert);
 	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, b_ind_vert );
 	glBufferData( 	GL_ELEMENT_ARRAY_BUFFER,
-						object.vert_ind_cnt * sizeof(object.vert_inds[0]),
-						object.vert_inds,
+						model.vert_ind_cnt * sizeof(model.vert_inds[0]),
+						model.vert_inds,
 						GL_STATIC_DRAW );
 
 	glGenBuffers(1, &b_ind_norm);
 	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, b_ind_norm);
 	glBufferData( 	GL_ELEMENT_ARRAY_BUFFER,
-						object.norm_ind_cnt*sizeof(object.norm_inds[0]),
-						object.norm_inds,
+						model.norm_ind_cnt*sizeof(model.norm_inds[0]),
+						model.norm_inds,
 						GL_STATIC_DRAW);
 
 	glClearColor(0.5, 0, 0.5, 1);
 	glUseProgram( programID );
 
 	#define GET_UNIFORM(i, s)	if( (i = glGetUniformLocation( programID, s )) == -1) 			\
-											ERRX_GL( 1, "No " s " found in shader");
+											wlog_fatal_error( "No " s " found in shader");
 
 	#define GET_ATTRIB(i, s) 	if( (i = glGetAttribLocation( programID, s )) == -1) 			\
-											ERRX_GL( 1, "No " s " found in shader");
+											wlog_fatal_error( "No " s " found in shader");
 
 	GET_ATTRIB(vertexPos2DLocation, "Normal");
 	glEnableVertexAttribArray( vertexPos2DLocation );
@@ -143,8 +144,7 @@ int main( int argc, char* argv[] ){
 	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, b_ind_vert );
 
 
-	__debug_print_object_info(&object);
-
+	__debug_print_model_info(&model);
 
 
 	glEnable(GL_DEPTH_TEST);
@@ -175,7 +175,8 @@ int main( int argc, char* argv[] ){
 			return 0;
 		if (events_status & 2){
 			glDeleteProgram(programID);
-			programID = getShaderProgram();
+			fload_program(&shader_info, &programID);
+			__debug_print_shader_cache__(stdout);
 			glUseProgram(programID);
 		}
 
@@ -183,7 +184,7 @@ int main( int argc, char* argv[] ){
 
 		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 		glDrawElements( 	GL_TRIANGLES,
-								object.vert_ind_cnt,
+								model.vert_ind_cnt,
 								GL_UNSIGNED_INT,
 								NULL);
 
@@ -225,8 +226,6 @@ static int32_t handleEvents( movement_t* player ){
 				update = 1;
 				break;
 			case SDL_KEYDOWN:
-				if(SDL_PRESSED != e.key.state) break;
-
 				switch(e.key.keysym.sym){
 					case SDLK_w:
 						f = 1; break;
@@ -247,8 +246,6 @@ static int32_t handleEvents( movement_t* player ){
 				break;
 
 			case SDL_KEYUP:
-				if(SDL_RELEASED != e.key.state) break;
-
 				switch(e.key.keysym.sym){
 					case SDLK_w:
 						f = 0; break;
@@ -280,9 +277,6 @@ static int32_t handleEvents( movement_t* player ){
 	player->rl = fmax(-player->speedRL, fmin(player->speedRL, player->rl + player->accRL * 2 * (r-l)));
 	player->ud = fmax(-player->speedUD, fmin(player->speedUD, player->ud + player->accUD * 2 * (u-d)));
 
-	/*printf("\nAfter update\n");
-	print_movement(player);
-*/
 	return update;
 }
 
@@ -361,7 +355,6 @@ static void rotateCamera(GLuint programID, movement_t *player , int32_t player_u
 
 	glUseProgram(programID);
 
-
 	GLint eye_loc = glGetUniformLocation( programID, "Eyecam");
 	glUniform3fv(eye_loc, 1, &(Position+Direction)[0]);
 
@@ -378,75 +371,3 @@ static void rotateCamera(GLuint programID, movement_t *player , int32_t player_u
 	glUniform3f(dir_loc, 5 + 5*cos(angle), 5, 5 + 5*sin(angle));
 
 }
-
-static void print_movement(movement_t *m){
-	printf(
-		"\ttCamX\tCamY\n"
-		"\t%.2f\t%.2f\n"
-		"\tF_B\tR_L\tU_D\n"
-		"\t%.2f\t%.2f\t%.2f\n",
-		m->camX, m->camY,
-		m->fb, m->rl, m->ud
-		);
-}
-
-static GLuint getShaderProgram(){
-
-	static char log_buffer[200];
-	GLuint programID;
-	IO_stat_t io_status;
-
-	io_status = fload_program(
-					"shaders/simple.vs.glsl",
-					"shaders/simple.fs.glsl",
-					NULL, // "shaders/simple.gs.glsl",
-					NULL, NULL,
-					&programID
-				);
-	__debug_print_shader_cache__(stdout);
-
-	if( IO_OK != io_status){
-		glGetProgramInfoLog( programID, sizeof(log_buffer)/sizeof(log_buffer[0]), NULL, log_buffer);
-		errx(1, "shader loading error %d\n%s", io_status, log_buffer);
-	}
-	return programID;
-}
-
-static
-SDL_Window*
-initWindow( uint32_t width, uint32_t height )
-{
-	SDL_Window *window;
-	SDL_GLContext context;
-	GLenum glewError;
-
-
-	if ( 0 > SDL_Init( SDL_INIT_VIDEO )) ERRX_SDL( 1, "SDL Init Error" );
-
-	window = SDL_CreateWindow("Cuke'n'Die",
-										SDL_WINDOWPOS_UNDEFINED,
-										SDL_WINDOWPOS_UNDEFINED,
-										width,
-										height,
-										SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
-
-	if ( NULL == window ) ERRX_SDL( 1, "Window Creation Error" );
-
-	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
-	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 1 );
-	SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE );
-
-	context = SDL_GL_CreateContext( window );
-	if ( NULL == context ) ERRX_SDL( 3, "Context Creation Error" );
-
-	SDL_SetRelativeMouseMode( (SDL_bool) 1); /* remove cast??? */
-
-	glewExperimental = GL_TRUE;
-	glewError = glewInit( );
-	if ( GLEW_OK != glewError ) ERRX_GLEW( 2, "GLEW Init error", glewError );
-
-	if ( SDL_GL_SetSwapInterval( 1 ) < 0 ) ERRX_SDL( 3, "Vsync Init Error" );
-
-	return window;
-}
-

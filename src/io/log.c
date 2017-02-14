@@ -2,10 +2,22 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <errno.h>
 
+
+#define FATAL_TAG "FATAL"
+#define GL_LOG_BUFSIZE 1000
+
+
 static FILE* output;
+
+FILE*
+get_output()
+{
+	return output;
+}
 
 void
 init_log(const char* filename){
@@ -46,7 +58,7 @@ wlog(const char* tag, const char* message)
 }
 
 void
-wflog(const char* tag, const char* mes_pattern, ...)
+wflog(const char* tag, const char* msg_pattern, ...)
 {
 	va_list args;
 	time_t t;
@@ -54,8 +66,61 @@ wflog(const char* tag, const char* mes_pattern, ...)
 	time(&t);
 	fprintf(output, MSG_HEADER, t, tag);
 
-	va_start(args, mes_pattern);
-	vfprintf(output, mes_pattern, args);
+	va_start(args, msg_pattern);
+	vfprintf(output, msg_pattern, args);
 	fputc('\n', output);
 	va_end(args);
+}
+
+void
+wlog_fatal_error(const char* msg)
+{
+	init_log(NULL);
+	wlog(FATAL_TAG, msg);
+	exit(1);
+}
+
+
+/* a bit of overkill - copying entire wflog - but it's more convenient */
+
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wvarargs"
+
+/* I should actually kill myself for this, but error_code is used for both exit code and message, so... */
+
+void
+wflog_fatal_error(const char* msg_pattern, error_code code, ...)
+{
+	va_list args;
+	time_t t;
+
+	time(&t);
+	fprintf(output, MSG_HEADER, t, FATAL_TAG);
+
+	/* Attention: args actually start with error_code */
+	va_start(args, msg_pattern);
+	vfprintf(output, msg_pattern, args);
+	fputc('\n', output);
+	va_end(args);
+
+	exit(code);
+}
+
+#pragma GCC diagnostic pop
+
+void
+wlog_shader_infolog(GLuint shaderID)
+{
+	char log_buffer[GL_LOG_BUFSIZE];
+	glGetShaderInfoLog( shaderID, sizeof(log_buffer)/sizeof(log_buffer[0]), NULL, log_buffer);
+	wlog("ERROR", log_buffer);
+}
+
+void
+wlog_sprogram_infolog(GLuint programID)
+{
+	char log_buffer[GL_LOG_BUFSIZE];
+	glGetProgramInfoLog( programID, sizeof(log_buffer)/sizeof(log_buffer[0]), NULL, log_buffer);
+	wlog("ERROR", log_buffer);	
 }

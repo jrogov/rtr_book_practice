@@ -57,3 +57,10 @@ movement_t player = {
 		PLAYER_ACC,
 		PLAYER_ACC
 	};
+
+sprogram_info_t shader_info = { 
+	"shaders/simple.vs.glsl",
+	"shaders/simple.fs.glsl",
+	NULL,
+	NULL, NULL
+};

@@ -24,10 +24,10 @@ typedef struct
 	size_t uv_ind_cnt;
 	size_t norm_ind_cnt;
 }
-obj_t;
+model_t;
 
 IO_stat_t
-loadOBJ(const char* filename, obj_t* object);
+loadOBJ(const char* filename, model_t* model);
 
 
 void
@@ -42,6 +42,6 @@ useMTL(const char* name);
 
 /* print struct's info*/
 void
-__debug_print_object_info(obj_t* object);
+__debug_print_model_info(model_t* model);
 
 #endif	/* _MODEL_H_ */
