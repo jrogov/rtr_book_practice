@@ -7,7 +7,7 @@
 
 static FILE* output;
 
-void 
+void
 init_log(const char* filename){
 
 	if (output != NULL && output != stderr)
@@ -28,7 +28,7 @@ init_log(const char* filename){
 	return;
 }
 
-void 
+void
 close_log()
 {
 	if ( output != NULL && output != stderr)
@@ -37,7 +37,7 @@ close_log()
 
 #define MSG_HEADER "%20lu [%s]: "
 
-void 
+void
 wlog(const char* tag, const char* message)
 {
 	time_t t;
@@ -53,7 +53,7 @@ wflog(const char* tag, const char* mes_pattern, ...)
 
 	time(&t);
 	fprintf(output, MSG_HEADER, t, tag);
-	
+
 	va_start(args, mes_pattern);
 	vfprintf(output, mes_pattern, args);
 	fputc('\n', output);

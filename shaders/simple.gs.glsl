@@ -10,14 +10,16 @@ layout(triangle_strip, max_vertices = 3) out;
 // layout(line_strip, max_vertices = 6) out;
 
 in vec3 normal[];
+in float dist[];
+
 out vec3 norm;
+out float  Dist;
 
 void pass_through();
 void raycast();
 void simple_wall();
 void wireframe();
 
-// why cant i fucking pass this stupid UV
 void main()
 {
 	// wireframe();
@@ -29,6 +31,7 @@ void pass_through(){
 		gl_Position = gl_in[i].gl_Position;
 		//gl_PointSize = gl_in[i].gl_PointSize;
   		//gl_ClipDistance = gl_in[i].gl_ClipDistance;;
+  		Dist = dist[i];
 		norm = normal[i];
 		EmitVertex();
 	}
@@ -42,6 +45,7 @@ void wireframe(){
 		EmitVertex();
 		gl_Position = gl_in[i].gl_Position;
 		norm=normal[i];
+		Dist = dist[i];
 		EmitVertex();
 		EndPrimitive();
 	}

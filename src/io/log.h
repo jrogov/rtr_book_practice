@@ -3,13 +3,13 @@
 
 /* NULL for stderr */
 
-void 
+void
 init_log(const char* filename);
 
-void 
+void
 close_log();
 
-void 
+void
 wlog(const char* tag, const char* message);
 
 void

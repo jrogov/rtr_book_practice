@@ -28,8 +28,9 @@ IO_stat_t fload_program(
     GLuint *program
     );
 
+/*	DEBUG */
+
 /*
-	DEBUG
 	prints current cache state
 */
 void __debug_print_shader_cache__(FILE* f);

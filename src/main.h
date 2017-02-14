@@ -9,7 +9,7 @@ typedef struct
 		GLfloat camY;
 		GLfloat fb;
 		GLfloat rl;
-		GLfloat ud;	
+		GLfloat ud;
 		GLfloat speedFB;
 		GLfloat speedRL;
 		GLfloat speedUD;

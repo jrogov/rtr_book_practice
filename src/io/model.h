@@ -5,14 +5,14 @@
 
 typedef struct
 {
-	GLfloat* verts; 
-	GLfloat* uvs; 
+	GLfloat* verts;
+	GLfloat* uvs;
 	GLfloat* norms;
-	
+
 	/* NULL or First element is -1 if no indices used: only raw positions */
 
-	GLuint* vert_inds; 
-	GLuint* uv_inds; 
+	GLuint* vert_inds;
+	GLuint* uv_inds;
 	GLuint* norm_inds;
 
 	/* num of positions if (only raw vertices) condition met, else number of indices of positions  */
@@ -38,5 +38,10 @@ void
 useMTL(const char* name);
 
 
+/* DEBUG */
+
+/* print struct's info*/
+void
+__debug_print_object_info(obj_t* object);
 
 #endif	/* _MODEL_H_ */

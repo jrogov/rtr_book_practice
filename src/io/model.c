@@ -1,4 +1,4 @@
-#include <stdlib.h> 
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -11,11 +11,11 @@
 
 
 
-/* 
+/*
 
-	OBJ legend 
+	OBJ legend
 
-	usemtl					| MTL files 
+	usemtl					| MTL files
 	mtllib					| -||-
 	# ...						| comment
 	v f1 f2 f3 				| vertex (3 floats)
@@ -41,7 +41,7 @@ loadOBJ(const char* filename, obj_t* object)
 
 	f = fopen(filename, "r");
 	if (f == NULL){
-		return get_last_iostat();	
+		return get_last_iostat();
 	}
 
 	while( !feof(f) )
@@ -75,10 +75,10 @@ loadOBJ(const char* filename, obj_t* object)
 				loadMTLlib(buffer);
 				continue;
 			}
-		
+
 		if (ISHEAD ("#"))
 				continue;
-		
+
 		if ( ISHEAD ("v") && object->verts != NULL )
 			{
 				FILLFLOAT(object->verts, vi, 3);
@@ -139,12 +139,12 @@ loadOBJ(const char* filename, obj_t* object)
 
 	/*printf("Indices:\n");
 	for(i=0; i<ivi; i+=3)
-		printf("%lu: %u/%u/%u %u/%u/%u %u/%u/%u\n", 
+		printf("%lu: %u/%u/%u %u/%u/%u %u/%u/%u\n",
 					i, object->vert_inds[i+0], object->uv_inds[i+0], object->norm_inds[i+0],
 					object->vert_inds[i+1], object->uv_inds[i+1], object->norm_inds[i+1],
 					object->vert_inds[i+2], object->uv_inds[i+2], object->norm_inds[i+2]
 					);
-	
+
 	printf("\nVertices:\n");
 	for(i=0; i<vi; i+=3)
 		printf("%3.1f %3.1f %3.1f\n", vertices[i], vertices[i+1], vertices[i+2]);
@@ -152,6 +152,19 @@ loadOBJ(const char* filename, obj_t* object)
 
 	return IO_OK;
 
+}
+
+void
+__debug_print_object_info(obj_t* object)
+{
+	printf("vi = %lu | ui = %lu | ni = %lu\nivi = %lu | iui = %lu | ini = %lu\n",
+				object->verts_cnt,
+				object->uvs_cnt,
+				object->norms_cnt,
+				object->vert_ind_cnt,
+				object->uv_ind_cnt,
+				object->norm_ind_cnt 
+	);
 }
 
 void
