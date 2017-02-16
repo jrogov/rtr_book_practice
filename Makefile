@@ -1,5 +1,6 @@
-CPP = g++
-CPPFLAGS = -pedantic -Wall -Werror -Wno-unused-function -Wno-unused-variable
+CXX = g++
+CXXFLAGS = -pedantic -Wall -Werror 
+CXXFLAGS_DEBUG := -Wno-unused-function -Wno-unused-variable
 LIBS = -lSDL2 -lGLEW -lGL -lGLU -lm
 
 vpath %.c src $(wildcard src/*/.)
@@ -17,14 +18,18 @@ TARGET = app
 
 all: $(TARGET)
 
+release : FORCE disable_debug all
+
+disable_debug :
+CXXFLAGS_DEBUG := 
 
 $(TARGET): $(OBJECTS)
-	$(CPP) $(CPPFLAGS) $(addprefix $(BUILDDIR)/, $(OBJECTS)) -o $(BUILDDIR)/$@ $(LIBS)
+	$(CXX) $(CXXFLAGS) $(CXXFLAGS_DEBUG) $(addprefix $(BUILDDIR)/, $(OBJECTS)) -o $(BUILDDIR)/$@ $(LIBS)
 	ln -fs build/app app
 
 
 $(OBJECTS): %.o: %.c 
-	$(CPP) -c $(CPPFLAGS) $< -o $(BUILDDIR)/$@ 
+	$(CXX) -c $(CXXFLAGS) $< -o $(BUILDDIR)/$@ 
 
 
 clean: FORCE
