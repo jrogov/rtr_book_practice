@@ -28,34 +28,18 @@
 #define STRINGIFY2(x) #x
 #define STRINGIFY(x) STRINGIFY2(x)
 
-static GLuint getShaderProgram();
-static void print_movement(movement_t *m);
 static void rotateCamera(GLuint programID, movement_t *player , int32_t player_update );
+
+#define GET_UNIFORM(i, s)	if( (i = glGetUniformLocation( programID, s )) == -1) 			\
+										wlog_fatal_error( "No " s " found in shader");
+
+#define GET_ATTRIB(i, s) 	if( (i = glGetAttribLocation( programID, s )) == -1) 			\
+										wlog_fatal_error( "No " s " found in shader");
 
 
 #define ELNUM 40000
 
-model_t init_obj(){
-	model_t model;
-	IO_stat_t status;
-
-	model.verts = (GLfloat*) malloc( (sizeof(GLfloat)+sizeof(GLint))*3*ELNUM);
-	model.uvs = &(model.verts)[ELNUM];
-	model.norms = &(model.verts)[2*ELNUM];
-
-	model.vert_inds = (GLuint*) &(model.verts)[3*ELNUM];
-	model.uv_inds = (GLuint*) &(model.vert_inds)[ELNUM];
-	model.norm_inds = (GLuint*) &(model.vert_inds)[2*ELNUM];
-
-	status = loadOBJ("res/obj/pumpkin_tr.obj", &model);
-	printf("Status ID: %d\n", status);
-	if (status != IO_OK)
-	{
-		exit(0);
-	}
-
-	return model;
-}
+#define MODEL_PATH "res/obj/al_tr.obj"
 
 int main( int argc, char* argv[] ){
 
@@ -64,96 +48,30 @@ int main( int argc, char* argv[] ){
 	IO_stat_t io_status;
 
 	GLuint programID;
-	GLuint b_vert;
-	GLuint b_ind_vert;
-	GLuint b_norm;
-	GLuint b_ind_norm;
-	GLuint VAO;
-	// GLuint ub_vert;
 
-	GLint vertexPos2DLocation;
-	// GLint vertexUVLocation;
-	// GLint samplerLocation;
-
-	// GLuint brick_textID;
-
-	model_t model;
+	obj_t model;
 
 	init_log(NULL);
+
 	window = initWindow(WIDTH, HEIGHT);
 	io_status = fload_program(&shader_info, &programID);
 	__debug_print_shader_cache__(stdout);
-	if( io_status != IO_OK )
-		return 1;
 
-	model = init_obj();
+	io_status = loadOBJ(MODEL_PATH, &model);
+	if( io_status != IO_OK)
+		printf("%s\n", str_ioerror(io_status));
 
-	/* VAO */
-	glGenVertexArrays(1, &VAO);
-	glBindVertexArray(VAO);
-	/* b_vert */
-	glGenBuffers( 1, &b_vert );
-	glBindBuffer( GL_ARRAY_BUFFER, b_vert );
-	glBufferData( 	GL_ARRAY_BUFFER,
-						model.verts_cnt * sizeof(model.verts[0]),
-						model.verts,
-						GL_STATIC_DRAW );
-
-	glGenBuffers( 1, &b_norm );
-	glBindBuffer( GL_ARRAY_BUFFER, b_norm );
-	glBufferData( GL_ARRAY_BUFFER,
-						model.norms_cnt * sizeof(model.norms[0]),
-						model.norms,
-						GL_STATIC_DRAW );
-
-	/* b_ind_vert */
-	glGenBuffers( 1, &b_ind_vert);
-	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, b_ind_vert );
-	glBufferData( 	GL_ELEMENT_ARRAY_BUFFER,
-						model.vert_ind_cnt * sizeof(model.vert_inds[0]),
-						model.vert_inds,
-						GL_STATIC_DRAW );
-
-	glGenBuffers(1, &b_ind_norm);
-	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, b_ind_norm);
-	glBufferData( 	GL_ELEMENT_ARRAY_BUFFER,
-						model.norm_ind_cnt*sizeof(model.norm_inds[0]),
-						model.norm_inds,
-						GL_STATIC_DRAW);
-
-	glClearColor(0.5, 0, 0.5, 1);
 	glUseProgram( programID );
-
-	#define GET_UNIFORM(i, s)	if( (i = glGetUniformLocation( programID, s )) == -1) 			\
-											wlog_fatal_error( "No " s " found in shader");
-
-	#define GET_ATTRIB(i, s) 	if( (i = glGetAttribLocation( programID, s )) == -1) 			\
-											wlog_fatal_error( "No " s " found in shader");
-
-	GET_ATTRIB(vertexPos2DLocation, "Normal");
-	glEnableVertexAttribArray( vertexPos2DLocation );
-	glBindBuffer(GL_ARRAY_BUFFER, b_norm);
-	glVertexAttribPointer( vertexPos2DLocation, 3, GL_FLOAT, GL_FALSE, 0, NULL);
-
-	GET_ATTRIB(vertexPos2DLocation, "Pos");
-	glEnableVertexAttribArray( vertexPos2DLocation );
-	glBindBuffer(GL_ARRAY_BUFFER, b_vert);
-	glVertexAttribPointer( vertexPos2DLocation, 3, GL_FLOAT, GL_FALSE, 0, NULL);
-
-	glBindBuffer( GL_ARRAY_BUFFER, b_vert );
-	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, b_ind_vert );
-
 
 	__debug_print_model_info(&model);
 
-
-	glEnable(GL_DEPTH_TEST);
+	glClearColor(0.5, 0, 0.5, 1);
 	glEnable(GL_CULL_FACE);
-	glCullFace(GL_FRONT);
-	// glShadeModel(GL_FLAT);
+	glEnable(GL_DEPTH_TEST);
+	// glCullFace(GL_FRONT);
 	glEnable(GL_MULTISAMPLE);
 
-	#define MSAA_NUM 3
+	#define MSAA_NUM 4
 	GLuint tex;
 	glGenTextures( 1, &tex );
 	glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, tex );
@@ -164,8 +82,10 @@ int main( int argc, char* argv[] ){
 	glBindFramebuffer( GL_FRAMEBUFFER, fbo );
 	glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, tex, 0 );
 
-	// GLenum status = glCheckFramebufferStatus( target );
+	glBindVertexArray(model.VAO);
 
+	time_t prev, now;
+	size_t counter;
 	while(1){
 		
 		glBindFramebuffer( GL_FRAMEBUFFER, fbo );
@@ -183,11 +103,7 @@ int main( int argc, char* argv[] ){
 		rotateCamera( programID, &player, 1 );
 
 		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-		glDrawElements( 	GL_TRIANGLES,
-								model.vert_ind_cnt,
-								GL_UNSIGNED_INT,
-								NULL);
-
+		glDrawArrays(GL_TRIANGLES, 0, model.verts_cnt);
 		glFlush();
 
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);   // Make sure no FBO is set as the draw framebuffer
@@ -196,7 +112,15 @@ int main( int argc, char* argv[] ){
 		glBlitFramebuffer(0, 0, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
 		SDL_GL_SwapWindow( window );
-		SDL_Delay(16);
+		
+		// SDL_Delay(16);
+		counter++;
+		time(&now);
+		if(now - prev >=10){
+			wflog("INFO", "FPS: %.2f", ((double) counter)/(now-prev));
+			prev = now;
+			counter = 0;
+		}
 	}
 
 }
@@ -336,11 +260,7 @@ static void rotateCamera(GLuint programID, movement_t *player , int32_t player_u
 	player->ud = fabs(player->ud) < 0.02? 0: (player->ud + (player->ud > 0? -1 : 1) * 0.3 * player->accUD);
 
 	 /* Swap Y and -Z for human-intuitive way */
-	Model = glm::mat4(0.0);
-	Model[0][0] = 1.0;
-	Model[1][1] = 1.0;
-	Model[2][2] = -1.0;
-	Model[3][3] = 1.0;
+	Model = glm::mat4(1.0);
 
 	View = glm::lookAt(
 							Position,
@@ -368,6 +288,6 @@ static void rotateCamera(GLuint programID, movement_t *player , int32_t player_u
 
 	GLint dir_loc = glGetUniformLocation(programID, "Dir");
 	// glUniform3fv(dir_loc, 1, &Direction[0]);
-	glUniform3f(dir_loc, 5 + 5*cos(angle), 5, 5 + 5*sin(angle));
+	glUniform3f(dir_loc, 5*cos(angle), 5,  5*sin(angle));
 
 }

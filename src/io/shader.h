@@ -7,6 +7,13 @@
 
 #include "IO_funcs.h"
 
+enum e_def_loc
+{
+	LOC_POSITION = 0,
+	LOC_UV,
+	LOC_NORMAL
+};
+
 
 typedef struct
 {

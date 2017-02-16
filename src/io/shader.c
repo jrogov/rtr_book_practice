@@ -141,7 +141,6 @@ IO_stat_t
 fload_program( sprogram_info_t* info, GLuint *program)
 {
 	GLuint programID;
-	GLuint vertexShader, geometryShader, fragmentShader, tessControlShader, tessEvalShader;
 	GLint status;
 
 	/* size for compile-error in case if sprogram_info_t changed */
@@ -231,7 +230,6 @@ static IO_stat_t load_shader_source(const char* filename, GLuint *shader, GLenum
 	GLuint s;
 	GLint filesize;
 	GLint status;
-	GLchar *log;
 
 	switch(type){
 		case GL_COMPUTE_SHADER:

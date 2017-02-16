@@ -5,5 +5,3 @@
 #include "camera.h"
 
 static int32_t handleEvents( movement_t* );
-static void initOGL();
-static GLuint getShaderProgram();
