@@ -1,7 +1,8 @@
-#version 140
+#version 330
 
-in vec3 Pos; 
-in vec3 Normal;
+layout(location = 0) in vec3 Pos; 
+
+layout(location = 2) in vec3 Normal;
 
 out vec3 normal;
 out float Dist;

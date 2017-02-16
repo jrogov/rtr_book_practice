@@ -1,0 +1,6 @@
+Name convention for shaders
+
+layout
+0 - Position Model Space
+1 - UV
+2 - Normal Model Space
