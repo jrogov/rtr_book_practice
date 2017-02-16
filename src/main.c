@@ -12,7 +12,6 @@
 
 #include <SDL2/SDL.h>
 
-#include "main.h"
 #include "init.h"
 #include "camera.h"
 
@@ -25,19 +24,18 @@
 
 #include "config.h"
 
-#define STRINGIFY2(x) #x
-#define STRINGIFY(x) STRINGIFY2(x)
-
-static void rotateCamera(GLuint programID, movement_t *player , int32_t player_update );
-
 #define GET_UNIFORM(i, s)	if( (i = glGetUniformLocation( programID, s )) == -1) 			\
 										wlog_fatal_error( "No " s " found in shader");
-
 #define GET_ATTRIB(i, s) 	if( (i = glGetAttribLocation( programID, s )) == -1) 			\
 										wlog_fatal_error( "No " s " found in shader");
 
+int window_height = HEIGHT;
+int window_width = WIDTH;
 
-#define ELNUM 40000
+
+static int32_t handleEvents( movement_t* );
+static void rotateCamera(GLuint programID, movement_t *player );
+
 
 #define MODEL_PATH "res/obj/al_tr.obj"
 
@@ -54,8 +52,10 @@ int main( int argc, char* argv[] ){
 	init_log(NULL);
 
 	window = initWindow(WIDTH, HEIGHT);
+
 	io_status = fload_program(&shader_info, &programID);
-	__debug_print_shader_cache__(stdout);
+	if( io_status != IO_OK)
+		wlog_fatal_error("No suitable shader found");
 
 	io_status = loadOBJ(MODEL_PATH, &model);
 	if( io_status != IO_OK)
@@ -70,6 +70,7 @@ int main( int argc, char* argv[] ){
 	glEnable(GL_DEPTH_TEST);
 	// glCullFace(GL_FRONT);
 	glEnable(GL_MULTISAMPLE);
+
 
 	#define MSAA_NUM 4
 	GLuint tex;
@@ -100,7 +101,7 @@ int main( int argc, char* argv[] ){
 			glUseProgram(programID);
 		}
 
-		rotateCamera( programID, &player, 1 );
+		rotateCamera( programID, &player );
 
 		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 		glDrawArrays(GL_TRIANGLES, 0, model.verts_cnt);
@@ -128,6 +129,8 @@ int main( int argc, char* argv[] ){
 /* -1 - quit, 0 - no updates, 1 - player update, 2 - reload shader */
 static int32_t handleEvents( movement_t* player ){
 
+
+
 	SDL_Event e;
 	GLuint update = 0;
 
@@ -135,18 +138,26 @@ static int32_t handleEvents( movement_t* player ){
 			f = 0, b = 0,
 			r = 0, l = 0,
 			u = 0, d = 0;
+	static GLint
+			focus = 1;
 
 	GLint xrel = 0,
 			yrel = 0;
 
+	player->fb = fabs(player->fb) < 0.01? 0: (player->fb + ( -2*(player->fb > 0) + 1 ) * 0.3 * player->accFB);
+	player->rl = fabs(player->rl) < 0.01? 0: (player->rl + ( -2*(player->rl > 0) + 1 ) * 0.3 * player->accRL);
+	player->ud = fabs(player->ud) < 0.01? 0: (player->ud + ( -2*(player->ud > 0) + 1 ) * 0.3 * player->accUD);
 
 	while( SDL_PollEvent(&e) !=0 ){
 		switch((e.type)){
 			case SDL_QUIT:
 				return -1;
 			case SDL_MOUSEMOTION:
-				xrel += e.motion.xrel;
-				yrel += e.motion.yrel;
+				if(focus)
+				{
+					xrel += e.motion.xrel;
+					yrel += e.motion.yrel;
+				}
 				update = 1;
 				break;
 			case SDL_KEYDOWN:
@@ -186,13 +197,24 @@ static int32_t handleEvents( movement_t* player ){
 				}
 				update |= 1;
 				break;
+			case SDL_WINDOWEVENT:
+				switch (e.window.event)
+				{
+					case SDL_WINDOWEVENT_FOCUS_GAINED:
+						focus = 1;
+						break;
+					case SDL_WINDOWEVENT_FOCUS_LOST:
+						focus = 0;
+						break;
+
+				}
 		}
 	}
 
 
 	player->camX -= player-> camX_sens * ((GLfloat) xrel)/WIDTH;
 
-	//constrain to vertical motion to [-pi/2;pi/2
+	//constrain to vertical motion to [-pi/2;pi/2]
 	player->camY -= player-> camY_sens * ((GLfloat) yrel)/HEIGHT;
 	player->camY = player->camY<3.14/2?player->camY:3.14/2;
 	player->camY = player->camY>-3.14/2?player->camY:-3.14/2;
@@ -205,9 +227,9 @@ static int32_t handleEvents( movement_t* player ){
 }
 
 
-static void rotateCamera(GLuint programID, movement_t *player , int32_t player_update ){
+static void rotateCamera(GLuint programID, movement_t *player ){
 
-	//static float last_ticks = ((float) clock());
+	//static float sublast_ticks = ((float) clock());
 	//float current_ticks;
 	//float cycle_time;
 	//current_ticks = ((float) clock());
@@ -255,13 +277,9 @@ static void rotateCamera(GLuint programID, movement_t *player , int32_t player_u
 	Position += Right * 		(player->rl);
 	Position += realUp * 			(player->ud);
 
-	player->fb = fabs(player->fb) < 0.02? 0: (player->fb + (player->fb > 0? -1 : 1) * 0.3 * player->accFB);
-	player->rl = fabs(player->rl) < 0.02? 0: (player->rl + (player->rl > 0? -1 : 1) * 0.3 * player->accRL);
-	player->ud = fabs(player->ud) < 0.02? 0: (player->ud + (player->ud > 0? -1 : 1) * 0.3 * player->accUD);
-
 	 /* Swap Y and -Z for human-intuitive way */
 	Model = glm::mat4(1.0);
-
+	
 	View = glm::lookAt(
 							Position,
 							Position+Direction,
@@ -272,22 +290,22 @@ static void rotateCamera(GLuint programID, movement_t *player , int32_t player_u
 
 
 	MVP = Projection * View * Model;
+	glm::mat4 ViewModel = View * Model;
 
 	glUseProgram(programID);
 
-	GLint eye_loc = glGetUniformLocation( programID, "Eyecam");
+	GLint eye_loc = glGetUniformLocation( programID, "W_Eye");
 	glUniform3fv(eye_loc, 1, &(Position+Direction)[0]);
 
-	glm::mat4 ViewModel = View * Model;
-	GLint m_loc = glGetUniformLocation( programID, "Model" );
-	glUniformMatrix4fv(m_loc, 1, GL_FALSE, &(Model)[0][0]);
-	GLint vm_loc = glGetUniformLocation( programID, "ViewModel" );
-	glUniformMatrix4fv(vm_loc, 1, GL_FALSE, &(ViewModel)[0][0]);
-	GLint mvp_loc = glGetUniformLocation( programID, "MVP" );
-	glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, &(Projection * ViewModel)[0][0]);
 
-	GLint dir_loc = glGetUniformLocation(programID, "Dir");
-	// glUniform3fv(dir_loc, 1, &Direction[0]);
+	#define SET_UMATRIX(name, data)	glUniformMatrix4fv( glGetUniformLocation( programID, name ) , 1, GL_FALSE, &((data))[0][0]);
+
+	SET_UMATRIX("Model", Model);
+	SET_UMATRIX("View", View);
+	SET_UMATRIX("ViewModel", ViewModel)
+	SET_UMATRIX("MVP", MVP)
+
+	GLint dir_loc = glGetUniformLocation(programID, "W_LightDir");
 	glUniform3f(dir_loc, 5*cos(angle), 5,  5*sin(angle));
 
 }

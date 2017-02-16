@@ -5,8 +5,10 @@
 #include <GL/glew.h>
 #include <GL/glu.h>
 
+
+
 SDL_Window*
-initWindow( uint32_t width, uint32_t height )
+initWindow( int width, int height )
 {
 	SDL_Window *window;
 	SDL_GLContext context;

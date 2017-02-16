@@ -9,7 +9,7 @@ vpath %.o build
 SOURCEDIR = src
 BUILDDIR = build
 
-IGNORE := 
+IGNORE := light.c camera.c movement.c
 SOURCES := $(filter-out $(IGNORE), $(notdir $(wildcard $(SOURCEDIR)/*.c $(SOURCEDIR)/*/*.c)) )
 OBJECTS := $(SOURCES:.c=.o)
 

@@ -17,7 +17,7 @@ uniform vec3 Dir;
 uniform vec3 Eyecam;
 
 #define G 100
-#define LightPower 100
+#define LightPower 400
 #define SPEC_M 4
 
 vec3 Shade(
@@ -28,11 +28,18 @@ vec3 Shade(
 
 
 void main(){
-	normal = vec3( mat4(Model) * vec4(Normal,0));
+	normal = vec3( ViewModel * inverse(Model) * vec4(Normal,0));
 
 	gl_Position = (MVP) * vec4(Pos, 1);
-	Dist = distance(gl_Position.xyz, Dir);
-	ShadeLo = Shade(Eyecam, Dir, normal, Dist);
+
+	vec3 WPosition = vec3(Model * vec4(Pos,1));
+	vec3 CEye = - vec3(ViewModel * vec4(Pos,1));
+
+	vec3 CLPos = vec3(ViewModel * (Dir, 1));
+	vec3 CLDir = CLPos - CEye;
+
+	Dist = distance(WPosition, Dir);
+	ShadeLo = Shade(CEye, CLDir, normal, Dist);
 
 	// gl_Position =  MVP * vec4(Pos.x, Pos.z, Pos.y, 1);
 }
@@ -43,8 +50,8 @@ vec3 Shade(
 	vec3 Norm,
 	float Dist)
 {
-	vec3 DiffuseColor = 5*vec3(0.1, 0.1, 0.0);
-	vec3 SpecularColor = vec3(0.1, 0.0, 0.1);
+	vec3 DiffuseColor = 0.5*vec3(0.1, 0.1, 0.0);
+	vec3 SpecularColor = 0.5*vec3(0.1, 0.0, 0.1);
 
 	vec3 hsvDiffuse = vec3(32.0/360.0, 0.32, 0.32);
 	vec3 hsvSpecular = vec3(16.0/360.0, 0.64, 0.00);
