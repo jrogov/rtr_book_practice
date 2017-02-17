@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <err.h>
 
+#include "log.h"
 #include "IO_funcs.h"
 #include "image.h"
 #include "bmp.h"
@@ -36,8 +37,6 @@ GLuint load_texture( image_t* image
 	return textureID;
 }
 
-#define WARN_HEADER "[load_BMPtexture]"
-
 GLuint fload_BMP_texture( const char* filename ){
 	FILE* 	f;
 	image_t* image;
@@ -46,13 +45,13 @@ GLuint fload_BMP_texture( const char* filename ){
 
 	f = fopen(filename, "r");
 	if( NULL == f ) {
-		warnx("%s: file wasn't found: %s\n", WARN_HEADER, filename);
+		wflog("ERROR", "%s not found", filename);
 		return 0;
 	}
 
 	status = load_BMP24(f, &image, NULL);
 	if ( IO_OK != status ){
-		warnx("%s: BMP loading error with code %d", WARN_HEADER, status);
+		wflog("ERROR", "BMP loading error (io code %u)", status);
 		return 0;
 	}
 

@@ -33,11 +33,8 @@ struct shader_file_t{
 
 static struct shader_file_t* sf_head = NULL;
 
+
 static IO_stat_t load_shader_source(const char* filename, GLuint *shader, GLenum type);
-
-
-
-
 
 
 IO_stat_t load_shader(const char* filename, GLuint *shader, GLenum type){
@@ -167,10 +164,11 @@ fload_program( sprogram_info_t* info, GLuint *program)
 
 		if(NULL != *info_name_p)
 			io_status = load_shader(*info_name_p, &shaders[i], shader_types[i]);
-		
+		else
+			continue;
+
 		if(io_status != IO_OK) 
 		{
-			wlog_shader_infolog(programID); 
 			return io_status;
 		}		
 		
@@ -181,7 +179,8 @@ fload_program( sprogram_info_t* info, GLuint *program)
 		glLinkProgram( programID );
 	glGetProgramiv( programID, GL_LINK_STATUS, &status);
 	if ( status != GL_TRUE ) {
-    return IO_EXT_FUNC_ERROR;
+   	wlog_sprogram_infolog(programID);
+   	return IO_EXT_FUNC_ERROR;
   	}
 
 
@@ -243,10 +242,11 @@ static IO_stat_t load_shader_source(const char* filename, GLuint *shader, GLenum
 			return IO_PARAM_ERROR;
 	}
 
+
 	f = fopen(filename, "r");
 	if( NULL == f ) {
 		
-		wflog( "Failed to load shader %s: %s", filename, str_ioerror(get_last_iostat()) ); 
+		wflog( "Failed to load shaderfile %s: %s", filename, str_ioerror(get_last_iostat()) ); 
 		switch(errno){
 			case ENOENT: return IO_NO_FILE_ERROR;
 			case ENAMETOOLONG: return IO_NAME_LENGTH_ERROR;
@@ -266,10 +266,9 @@ static IO_stat_t load_shader_source(const char* filename, GLuint *shader, GLenum
 	glGetShaderiv( s, GL_COMPILE_STATUS, &status );
 	
 	if( status != GL_TRUE ){
-		wlog_shader_infolog(s);
+		wlog_shader_infolog(s, filename);
 		return IO_FORMAT_ERROR;
 	}
-
 	*shader = s;
 	return IO_OK;
 }

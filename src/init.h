@@ -5,6 +5,8 @@
 #include <stdint.h>
 
 SDL_Window*
-initWindow( uint32_t width, uint32_t height );
+initWindow( unsigned int width, unsigned int height, 
+				const char* name,
+				unsigned int posx, unsigned int posy);
 
 #endif /* _INIT_H_ */ 

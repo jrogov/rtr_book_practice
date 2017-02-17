@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <math.h>
 #include <time.h>
+#include <sys/time.h>
 
 #include <GL/glew.h>
 #include <GL/glu.h>
@@ -24,24 +25,27 @@
 
 #include "config.h"
 
-#define GET_UNIFORM(i, s)	if( (i = glGetUniformLocation( programID, s )) == -1) 			\
+#define GET_UNIFORM(i, s)	if( (i = glGetUniformLocation( programID, s )) == (GLuint) -1) 			\
 										wlog_fatal_error( "No " s " found in shader");
-#define GET_ATTRIB(i, s) 	if( (i = glGetAttribLocation( programID, s )) == -1) 			\
+#define GET_ATTRIB(i, s) 	if( (i = glGetAttribLocation( programID, s )) == (GLuint) -1) 			\
 										wlog_fatal_error( "No " s " found in shader");
 
-int window_height = HEIGHT;
-int window_width = WIDTH;
+SDL_Window *window;
+unsigned int window_height = HEIGHT;
+unsigned int window_width = WIDTH;
+unsigned int window_posx = POSX;
+unsigned int window_posy = POSY;
+
 
 
 static int32_t handleEvents( movement_t* );
 static void rotateCamera(GLuint programID, movement_t *player );
 
 
-#define MODEL_PATH "res/obj/al_tr.obj"
+#define MODEL_PATH "res/obj/scene.obj"
 
 int main( int argc, char* argv[] ){
 
-	SDL_Window *window;
 	int32_t events_status;
 	IO_stat_t io_status;
 
@@ -51,30 +55,43 @@ int main( int argc, char* argv[] ){
 
 	init_log(NULL);
 
-	window = initWindow(WIDTH, HEIGHT);
+
+	window = initWindow(WIDTH, HEIGHT, MODEL_PATH, window_posx, window_posy);
 
 	io_status = fload_program(&shader_info, &programID);
 	if( io_status != IO_OK)
-		wlog_fatal_error("No suitable shader found");
+		wlog_fatal_error(str_ioerror(io_status));
 
 	io_status = loadOBJ(MODEL_PATH, &model);
 	if( io_status != IO_OK)
-		printf("%s\n", str_ioerror(io_status));
+		wlog_fatal_error("No .obj file found");
 
 	glUseProgram( programID );
 
-	__debug_print_model_info(&model);
+	// __debug_print_model_info(&model);
 
 	glClearColor(0.5, 0, 0.5, 1);
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
-	// glCullFace(GL_FRONT);
+	glShadeModel(GL_SMOOTH);
+	glDepthFunc(GL_LESS); 
+
 	glEnable(GL_MULTISAMPLE);
 
+	GLuint texID = fload_BMP_texture("res/obj/lightmaps/scene_lightmap.obj");
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texID);
 
-	#define MSAA_NUM 4
-	GLuint tex;
-	glGenTextures( 1, &tex );
+	GLuint u_textureSampler;
+	u_textureSampler = glGetUniformLocation(programID, "textureSampler");
+	glUniform1i(u_textureSampler, 0);
+
+
+	/*#define MSAA_NUM 4
+	enum e_framebuffer {FB_COLOR, FB_DEPTH};
+
+	GLuint tex[2];
+	glGenTextures( 2, &tex );
 	glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, tex );
 	glTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, MSAA_NUM, GL_RGBA8, 4*WIDTH, 4*HEIGHT, false );
 
@@ -82,14 +99,15 @@ int main( int argc, char* argv[] ){
 	glGenFramebuffers( 1, &fbo );
 	glBindFramebuffer( GL_FRAMEBUFFER, fbo );
 	glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, tex, 0 );
-
+*/
 	glBindVertexArray(model.VAO);
 
 	time_t prev, now;
-	size_t counter;
+	time(&prev);
+	size_t counter=0;
 	while(1){
 		
-		glBindFramebuffer( GL_FRAMEBUFFER, fbo );
+		// glBindFramebuffer( GL_FRAMEBUFFER, fbo );
 
 		events_status = handleEvents( &player );
 		if ( -1 ==  events_status)
@@ -97,7 +115,7 @@ int main( int argc, char* argv[] ){
 		if (events_status & 2){
 			glDeleteProgram(programID);
 			fload_program(&shader_info, &programID);
-			__debug_print_shader_cache__(stdout);
+			//__debug_print_shader_cache__(stdout);
 			glUseProgram(programID);
 		}
 
@@ -107,17 +125,17 @@ int main( int argc, char* argv[] ){
 		glDrawArrays(GL_TRIANGLES, 0, model.verts_cnt);
 		glFlush();
 
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);   // Make sure no FBO is set as the draw framebuffer
+/*		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);   // Make sure no FBO is set as the draw framebuffer
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo); // Make sure your multisampled FBO is the read framebuffer
 		glDrawBuffer(GL_BACK);                       // Set the back buffer as the draw buffer
 		glBlitFramebuffer(0, 0, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
+*/
 		SDL_GL_SwapWindow( window );
 		
 		// SDL_Delay(16);
 		counter++;
 		time(&now);
-		if(now - prev >=10){
+		if(now - prev >=5){
 			wflog("INFO", "FPS: %.2f", ((double) counter)/(now-prev));
 			prev = now;
 			counter = 0;
@@ -140,6 +158,7 @@ static int32_t handleEvents( movement_t* player ){
 			u = 0, d = 0;
 	static GLint
 			focus = 1;
+	static uint32_t fullscreen = 0;
 
 	GLint xrel = 0,
 			yrel = 0;
@@ -176,6 +195,11 @@ static int32_t handleEvents( movement_t* player ){
 						d = 1; break;
 					case SDLK_F1:
 						update |= 2;
+						break;
+					case SDLK_F11:
+						fullscreen ^= SDL_WINDOW_FULLSCREEN_DESKTOP;
+						SDL_SetWindowFullscreen(window, fullscreen);
+						break;
 				}
 				update |= 1;
 				break;
@@ -229,21 +253,17 @@ static int32_t handleEvents( movement_t* player ){
 
 static void rotateCamera(GLuint programID, movement_t *player ){
 
-	//static float sublast_ticks = ((float) clock());
-	//float current_ticks;
-	//float cycle_time;
-	//current_ticks = ((float) clock());
-	//cycle_time = (current_ticks- last_ticks)/CLOCKS_PER_SEC;
-
-	//static GLfloat mousespeed = 2.5f;
+	/*static struct timeval last;
+	struct timeval now;
+	float timecoef;
+*/
 	static GLfloat angle = 0.0f;
-
 
 	GLfloat verticalAngle, horizontalAngle;
 
 	static GLfloat FoV = FOV;
 
-	static glm::vec3 Position = glm::vec3( 0, 4, 5 );
+	static glm::vec3 Position = glm::vec3( 7, 5, 7 );
 	static glm::vec3 realUp = glm::vec3(0, 1, 0);
 
 	glm::vec3 Up;
@@ -253,8 +273,13 @@ static void rotateCamera(GLuint programID, movement_t *player ){
 	glm::mat4 Model, View, Projection;
 	glm::mat4 MVP;
 
+	
+/*	gettimeofday(&now, NULL);
+	timecoef = 1/((now.tv_sec - last.tv_sec)*1000 + (now.tv_usec - last.tv_usec));
+	last = now;
+*/
 
-	angle+=0.03;
+	angle+= 0.03;
 
 	horizontalAngle = player->camX ;
 	verticalAngle 	= 	player->camY ;
@@ -288,9 +313,8 @@ static void rotateCamera(GLuint programID, movement_t *player ){
 
 	Projection = glm::perspective(FoV, ( (GLfloat) WIDTH)/HEIGHT, 0.1f, 100.0f);
 
-
-	MVP = Projection * View * Model;
-	glm::mat4 ViewModel = View * Model;
+	MVP = Projection * View ;
+	glm::mat4 ViewModel = View;
 
 	glUseProgram(programID);
 
@@ -306,6 +330,9 @@ static void rotateCamera(GLuint programID, movement_t *player ){
 	SET_UMATRIX("MVP", MVP)
 
 	GLint dir_loc = glGetUniformLocation(programID, "W_LightDir");
+	#define ANGLE 90.0/180.*3.14
+	// glUniform3f(dir_loc, 7*cos(ANGLE), 3,  7.0 * sin(ANGLE));
+	// glUniform3f(dir_loc, -5*sqrt(2)/2, 5,  5*sqrt(2)/2);
 	glUniform3f(dir_loc, 5*cos(angle), 5,  5*sin(angle));
 
 }

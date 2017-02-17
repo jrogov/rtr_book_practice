@@ -8,7 +8,9 @@
 
 
 SDL_Window*
-initWindow( int width, int height )
+initWindow( unsigned int width, unsigned int height, 
+				const char* name,
+				unsigned int posx, unsigned int posy)
 {
 	SDL_Window *window;
 	SDL_GLContext context;
@@ -18,12 +20,14 @@ initWindow( int width, int height )
 
 	if ( 0 > SDL_Init( SDL_INIT_VIDEO )) FATAL( "SDL Init error" , ECODE_SDL_INIT);
 
-	window = SDL_CreateWindow("Cuke'n'Die",
-										SDL_WINDOWPOS_UNDEFINED,
-										SDL_WINDOWPOS_UNDEFINED,
+	window = SDL_CreateWindow(name,
+										posx,
+										posy,
 										width,
 										height,
-										SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
+										SDL_WINDOW_SHOWN 
+											| SDL_WINDOW_OPENGL
+											);
 
 	if ( NULL == window ) FATAL( "Window Creation error", ECODE_SDL_WINDOW );
 

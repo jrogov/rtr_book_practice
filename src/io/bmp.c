@@ -6,7 +6,7 @@
 #include "IO_funcs.h"
 #include "bmp.h"
 #include "image.h"
-
+#include "log.h"
 
 #define ROW_GARBAGE_LENGTH(d, w) (4 - (((d * w) >> 3) & 3))&3
 
@@ -27,12 +27,12 @@ load_BMP24(FILE *f, image_t** image, bmp_header_t** header){
 	i = (image_t*) malloc(sizeof(*i));
 	if (	NULL ==h
 		||	NULL == i)
-		errx(1, "[ERROR] Malloc error");
+		wlog_fatal_error("Malloc error");
 	if (1!=(fread(h, sizeof(*h), 1, f))){
 		return IO_FORMAT_ERROR;
 	}
 	if (feof(f)){
-		warnx("Unexpected end of file");
+		wlog("ERROR", "BMP loading: unexpected EOF");
 		return IO_FORMAT_ERROR;
 	}
 

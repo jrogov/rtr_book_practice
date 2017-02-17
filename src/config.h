@@ -1,5 +1,8 @@
-#define HEIGHT 600
-#define WIDTH 1000
+#define HEIGHT 540
+#define WIDTH 960
+
+#define POSX 1080
+#define POSY 0
 
 #define MOUSE_SENSIVITY 2.0f
 #define PLAYER_SPEED 0.5f
@@ -43,8 +46,8 @@ static const GLuint testLevelIndex[] = {
 
 
 movement_t player = {
-		3.14f,
-		-0.6,
+		1.25*3.14f,
+		-0.4f,
 		0.0,
 		0.0,
 		0.0,

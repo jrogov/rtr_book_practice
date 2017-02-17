@@ -47,7 +47,7 @@ close_log()
 		fclose(output);
 }
 
-#define MSG_HEADER "%20lu [%s]: "
+#define MSG_HEADER " %lu [%s]: "
 
 void
 wlog(const char* tag, const char* message)
@@ -110,11 +110,11 @@ wflog_fatal_error(const char* msg_pattern, error_code code, ...)
 #pragma GCC diagnostic pop
 
 void
-wlog_shader_infolog(GLuint shaderID)
+wlog_shader_infolog(GLuint shaderID, const char* filename)
 {
 	char log_buffer[GL_LOG_BUFSIZE];
 	glGetShaderInfoLog( shaderID, sizeof(log_buffer)/sizeof(log_buffer[0]), NULL, log_buffer);
-	wlog("ERROR", log_buffer);
+	wflog("ERROR", "Failed loading shader %s.\n\n[OpenGL LOG]:\n%s\n", filename, log_buffer);
 }
 
 void
@@ -122,5 +122,5 @@ wlog_sprogram_infolog(GLuint programID)
 {
 	char log_buffer[GL_LOG_BUFSIZE];
 	glGetProgramInfoLog( programID, sizeof(log_buffer)/sizeof(log_buffer[0]), NULL, log_buffer);
-	wlog("ERROR", log_buffer);	
+	wflog("ERROR", "Failed linking shader program. \n\n[OpenGL LOG]:\n%s\n", log_buffer);	
 }

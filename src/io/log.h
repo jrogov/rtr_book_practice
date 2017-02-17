@@ -26,6 +26,9 @@ void
 wflog_fatal_error(const char* msg_pattern, error_code code, ...);
 
 void
-wlog_shader_infolog(GLuint programID);
+wlog_shader_infolog(GLuint shaderID, const char* filename);
+
+void
+wlog_sprogram_infolog(GLuint programID);
 
 #endif /* "_SIMPLELOG_H_ */
