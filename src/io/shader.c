@@ -162,11 +162,10 @@ fload_program( sprogram_info_t* info, GLuint *program)
 	for( i = 0; i < sizeof(shader_types)/sizeof(shader_types[0]); ++i)
 	{
 
-		if(NULL != *info_name_p)
-			io_status = load_shader(*info_name_p, &shaders[i], shader_types[i]);
-		else
+		if(NULL == *info_name_p)
 			continue;
-
+			
+		io_status = load_shader(*info_name_p, &shaders[i], shader_types[i]);
 		if(io_status != IO_OK) 
 		{
 			return io_status;
@@ -247,10 +246,7 @@ static IO_stat_t load_shader_source(const char* filename, GLuint *shader, GLenum
 	if( NULL == f ) {
 		
 		wflog( "Failed to load shaderfile %s: %s", filename, str_ioerror(get_last_iostat()) ); 
-		switch(errno){
-			case ENOENT: return IO_NO_FILE_ERROR;
-			case ENAMETOOLONG: return IO_NAME_LENGTH_ERROR;
-		}
+		return get_last_iostat();
 	}
 
 	filesize = fread(buffer, sizeof(*buffer), sizeof(buffer), f);

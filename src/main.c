@@ -15,6 +15,7 @@
 
 #include "init.h"
 #include "camera.h"
+#include "light.h"
 
 #include "io/shader.h"
 #include "io/texture.h"
@@ -25,11 +26,6 @@
 
 #include "config.h"
 
-#define GET_UNIFORM(i, s)	if( (i = glGetUniformLocation( programID, s )) == (GLuint) -1) 			\
-										wlog_fatal_error( "No " s " found in shader");
-#define GET_ATTRIB(i, s) 	if( (i = glGetAttribLocation( programID, s )) == (GLuint) -1) 			\
-										wlog_fatal_error( "No " s " found in shader");
-
 SDL_Window *window;
 unsigned int window_height = HEIGHT;
 unsigned int window_width = WIDTH;
@@ -37,12 +33,8 @@ unsigned int window_posx = POSX;
 unsigned int window_posy = POSY;
 
 
-
 static int32_t handleEvents( movement_t* );
 static void rotateCamera(GLuint programID, movement_t *player );
-
-
-#define MODEL_PATH "res/obj/scene.obj"
 
 int main( int argc, char* argv[] ){
 
@@ -55,59 +47,63 @@ int main( int argc, char* argv[] ){
 
 	init_log(NULL);
 
+	#define REPORT(s, code) if ( io_status != IO_OK ) wflog_fatal_error( (s), code);
 
 	window = initWindow(WIDTH, HEIGHT, MODEL_PATH, window_posx, window_posy);
 
 	io_status = fload_program(&shader_info, &programID);
-	if( io_status != IO_OK)
-		wlog_fatal_error(str_ioerror(io_status));
+	REPORT("Program load failed: %u", ECODE_GL);
 
 	io_status = loadOBJ(MODEL_PATH, &model);
-	if( io_status != IO_OK)
-		wlog_fatal_error("No .obj file found");
+	REPORT("Obj load failed: %u", ECODE_IO);
 
 	glUseProgram( programID );
 
-	// __debug_print_model_info(&model);
+	glBindVertexArray(model.VAO);
 
-	glClearColor(0.5, 0, 0.5, 1);
-	glEnable(GL_CULL_FACE);
+
+	#define SET_UNIFORM(s,v) glUniform1i( glGetUniformLocation(programID, (s)), (v) )
+	
+	// GLuint normID = fload_BMP_texture("res/obj/pool_n.bmp");
+	// SET_UNIFORM("normalSampler", 1);
+
+	// GLuint texID = fload_BMP_texture("res/obj/pool_c.bmp");
+	// SET_UNIFORM("textureSampler", 0);
+
+
+	glClearColor(0.5, 0.5, 0.5, 1);
+	// glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
 	glShadeModel(GL_SMOOTH);
 	glDepthFunc(GL_LESS); 
 
+	
+
 	glEnable(GL_MULTISAMPLE);
-
-	GLuint texID = fload_BMP_texture("res/obj/lightmaps/scene_lightmap.obj");
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texID);
-
-	GLuint u_textureSampler;
-	u_textureSampler = glGetUniformLocation(programID, "textureSampler");
-	glUniform1i(u_textureSampler, 0);
-
-
-	/*#define MSAA_NUM 4
-	enum e_framebuffer {FB_COLOR, FB_DEPTH};
+	#define MSAA_NUM 4
+	enum e_framebuffer {FB_COLOR, FB_DEPTHSTENCIL};
 
 	GLuint tex[2];
-	glGenTextures( 2, &tex );
-	glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, tex );
-	glTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, MSAA_NUM, GL_RGBA8, 4*WIDTH, 4*HEIGHT, false );
+	glGenTextures( 2, tex );
+	glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, tex[FB_COLOR] );
+	glTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, MSAA_NUM, GL_RGBA8, WIDTH, HEIGHT, false );
+	
+	glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, tex[FB_DEPTHSTENCIL] );
+	glTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, MSAA_NUM, GL_DEPTH24_STENCIL8, WIDTH, HEIGHT, false );
+
 
 	GLuint fbo;
 	glGenFramebuffers( 1, &fbo );
 	glBindFramebuffer( GL_FRAMEBUFFER, fbo );
-	glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, tex, 0 );
-*/
-	glBindVertexArray(model.VAO);
+	glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, tex[FB_COLOR], 0 );
+	glFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D_MULTISAMPLE, tex[FB_DEPTHSTENCIL], 0);
 
-	time_t prev, now;
+
+	time_t prev, last;
 	time(&prev);
 	size_t counter=0;
 	while(1){
 		
-		// glBindFramebuffer( GL_FRAMEBUFFER, fbo );
 
 		events_status = handleEvents( &player );
 		if ( -1 ==  events_status)
@@ -121,27 +117,43 @@ int main( int argc, char* argv[] ){
 
 		rotateCamera( programID, &player );
 
+		// glActiveTexture(GL_TEXTURE0);
+		// glBindTexture(GL_TEXTURE_2D, texID);
+
+		// glActiveTexture(GL_TEXTURE1);
+		// glBindTexture(GL_TEXTURE_2D, normID);
+
+
 		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 		glDrawArrays(GL_TRIANGLES, 0, model.verts_cnt);
 		glFlush();
 
-/*		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);   // Make sure no FBO is set as the draw framebuffer
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo); // Make sure your multisampled FBO is the read framebuffer
-		glDrawBuffer(GL_BACK);                       // Set the back buffer as the draw buffer
-		glBlitFramebuffer(0, 0, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-*/
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+		glDrawBuffer(GL_BACK);
+		glBlitFramebuffer(0, 0, WIDTH, HEIGHT, 
+								0, 0, WIDTH, HEIGHT, 
+								GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, 
+								GL_NEAREST);
+		glBindFramebuffer( GL_DRAW_FRAMEBUFFER, fbo );
+
 		SDL_GL_SwapWindow( window );
 		
 		// SDL_Delay(16);
 		counter++;
-		time(&now);
-		if(now - prev >=5){
-			wflog("INFO", "FPS: %.2f", ((double) counter)/(now-prev));
-			prev = now;
+		time(&last);
+		if(last - prev >=5){
+			wflog("INFO", "FPS: %.2f", ((double) counter)/(last-prev));
+			prev = last;
 			counter = 0;
 		}
 	}
 
+}
+
+float
+fclamp(float value, float min, float max)
+{
+	return fmax(min, fmin(max, value));
 }
 
 /* -1 - quit, 0 - no updates, 1 - player update, 2 - reload shader */
@@ -155,7 +167,8 @@ static int32_t handleEvents( movement_t* player ){
 	static GLint
 			f = 0, b = 0,
 			r = 0, l = 0,
-			u = 0, d = 0;
+			u = 0, d = 0,
+			shift = 0;
 	static GLint
 			focus = 1;
 	static uint32_t fullscreen = 0;
@@ -163,9 +176,14 @@ static int32_t handleEvents( movement_t* player ){
 	GLint xrel = 0,
 			yrel = 0;
 
-	player->fb = fabs(player->fb) < 0.01? 0: (player->fb + ( -2*(player->fb > 0) + 1 ) * 0.3 * player->accFB);
-	player->rl = fabs(player->rl) < 0.01? 0: (player->rl + ( -2*(player->rl > 0) + 1 ) * 0.3 * player->accRL);
-	player->ud = fabs(player->ud) < 0.01? 0: (player->ud + ( -2*(player->ud > 0) + 1 ) * 0.3 * player->accUD);
+	#define BRAKE_PLAYER(ax, acc) \
+			player->ax = fabs(player->ax) < 0.01 ? \
+									0: \
+									(player->ax + ( -2*(player->ax > 0) + 1 ) * 0.3 * player->acc)
+
+	BRAKE_PLAYER(fb, accFB);
+	BRAKE_PLAYER(rl, accRL);
+	BRAKE_PLAYER(ud, accUD);
 
 	while( SDL_PollEvent(&e) !=0 ){
 		switch((e.type)){
@@ -193,6 +211,8 @@ static int32_t handleEvents( movement_t* player ){
 						u = 1; break;
 					case SDLK_LCTRL:
 						d = 1; break;
+					case SDLK_LSHIFT:
+						shift = 1;
 					case SDLK_F1:
 						update |= 2;
 						break;
@@ -218,6 +238,8 @@ static int32_t handleEvents( movement_t* player ){
 						u = 0; break;
 					case SDLK_LCTRL:
 						d = 0; break;
+					case SDLK_LSHIFT:
+						shift = 0;
 				}
 				update |= 1;
 				break;
@@ -237,53 +259,49 @@ static int32_t handleEvents( movement_t* player ){
 
 
 	player->camX -= player-> camX_sens * ((GLfloat) xrel)/WIDTH;
-
-	//constrain to vertical motion to [-pi/2;pi/2]
 	player->camY -= player-> camY_sens * ((GLfloat) yrel)/HEIGHT;
-	player->camY = player->camY<3.14/2?player->camY:3.14/2;
-	player->camY = player->camY>-3.14/2?player->camY:-3.14/2;
+	player->camY = fclamp(player->camY, -3.14/2, 3.14/2);	
 
-	player->fb = fmax(-player->speedFB, fmin(player->speedFB, player->fb + player->accFB * 2 * (f-b)));
-	player->rl = fmax(-player->speedRL, fmin(player->speedRL, player->rl + player->accRL * 2 * (r-l)));
-	player->ud = fmax(-player->speedUD, fmin(player->speedUD, player->ud + player->accUD * 2 * (u-d)));
-
+	player->fb = fclamp( player->fb + (shift+1) * player->accFB * 2 * (f-b), (shift+1) * -player->speedFB, (shift+1) * player->speedFB );
+	player->rl = fclamp( player->rl + (shift+1) * player->accRL * 2 * (r-l), (shift+1) * -player->speedRL, (shift+1) * player->speedRL );
+	player->ud = fclamp( player->ud + (shift+1) * player->accUD * 2 * (u-d), (shift+1) * -player->speedUD, (shift+1) * player->speedUD );
+	
 	return update;
 }
 
 
 static void rotateCamera(GLuint programID, movement_t *player ){
 
-	/*static struct timeval last;
-	struct timeval now;
-	float timecoef;
-*/
-	static GLfloat angle = 0.0f;
+	static GLfloat light_param[2] = {0.0f, sqrt(2)/2};
+	static glm::vec3 Up = glm::vec3(0, 1, 0);
+
+	static struct timeval last;
 
 	GLfloat verticalAngle, horizontalAngle;
 
-	static GLfloat FoV = FOV;
-
-	static glm::vec3 Position = glm::vec3( 7, 5, 7 );
-	static glm::vec3 realUp = glm::vec3(0, 1, 0);
-
-	glm::vec3 Up;
+	glm::vec3 *Position;
 	glm::vec3 Direction;
 	glm::vec3 Right;
-
 	glm::mat4 Model, View, Projection;
-	glm::mat4 MVP;
-
 	
-/*	gettimeofday(&now, NULL);
-	timecoef = 1/((now.tv_sec - last.tv_sec)*1000 + (now.tv_usec - last.tv_usec));
-	last = now;
-*/
+	glm::mat4 ViewModel, MVP;
 
-	angle+= 0.03;
+
+	#define MAX_UTIME_VALUE (1e9-1)
+	#define UTIME(t) ( (GLfloat) ( t.tv_sec % 1000000 * 10000 )  + (GLfloat (t.tv_usec / 100) ) )
+
+	/* calculate data */
+	GLfloat unow = - (UTIME(last));
+	// printf("%f\n", unow);
+	gettimeofday(&last, NULL);
+	unow += ( UTIME(last) );
+
+	// GLfloat mult = 1e-8;
+	light_param[0] += 0.5 * ((GLfloat) unow) * 3.14 * 2 * 1e5 / MAX_UTIME_VALUE;
+	// printf("%f\n", light_param[0]);
 
 	horizontalAngle = player->camX ;
 	verticalAngle 	= 	player->camY ;
-
 	Direction = glm::vec3(
 								cos(verticalAngle) * sin(horizontalAngle),
 								sin(verticalAngle),
@@ -296,43 +314,44 @@ static void rotateCamera(GLuint programID, movement_t *player ){
 					cos(horizontalAngle - 3.14f/2.0f)
 	);
 
-	Up = glm::cross( Right, Direction );
+	Position = (glm::vec3*)(player);
 
-	Position += glm::normalize(glm::cross(realUp, Right)) *	(player->fb);
-	Position += Right * 		(player->rl);
-	Position += realUp * 			(player->ud);
+	*Position += glm::normalize(glm::cross(Up, Right)) *	(player->fb)
+				 + Right * (player->rl)
+				 + Up * (player->ud);
 
-	 /* Swap Y and -Z for human-intuitive way */
-	Model = glm::mat4(1.0);
-	
 	View = glm::lookAt(
-							Position,
-							Position+Direction,
-							realUp
+							*Position,
+							*Position+Direction,
+							Up
 	);
 
-	Projection = glm::perspective(FoV, ( (GLfloat) WIDTH)/HEIGHT, 0.1f, 100.0f);
 
-	MVP = Projection * View ;
-	glm::mat4 ViewModel = View;
+	Projection = glm::perspective(FOV, ( (GLfloat) window_width)/window_height, 0.1f, 1000.0f);
+
+	
+	ViewModel = View * Model;
+	MVP = Projection * ViewModel;
+
+	
+	/* send data to server */
 
 	glUseProgram(programID);
 
-	GLint eye_loc = glGetUniformLocation( programID, "W_Eye");
-	glUniform3fv(eye_loc, 1, &(Position+Direction)[0]);
+	#define SET_UMAT4(name, data)	glUniformMatrix4fv( glGetUniformLocation( programID, name ) , 1, GL_FALSE, &((data))[0][0]);
+	#define SET_UVEC3(name, data) glUniform3fv( glGetUniformLocation( programID, name ) , 1, &(data)[0]);
 
+	SET_UMAT4("View", View);
+	SET_UMAT4("ViewModel", ViewModel);
+	SET_UMAT4("MVP", MVP);
+	SET_UMAT4("Model", Model);
 
-	#define SET_UMATRIX(name, data)	glUniformMatrix4fv( glGetUniformLocation( programID, name ) , 1, GL_FALSE, &((data))[0][0]);
+	light[0].mut_func(&light[0], light_param);
 
-	SET_UMATRIX("Model", Model);
-	SET_UMATRIX("View", View);
-	SET_UMATRIX("ViewModel", ViewModel)
-	SET_UMATRIX("MVP", MVP)
-
-	GLint dir_loc = glGetUniformLocation(programID, "W_LightDir");
-	#define ANGLE 90.0/180.*3.14
-	// glUniform3f(dir_loc, 7*cos(ANGLE), 3,  7.0 * sin(ANGLE));
-	// glUniform3f(dir_loc, -5*sqrt(2)/2, 5,  5*sqrt(2)/2);
-	glUniform3f(dir_loc, 5*cos(angle), 5,  5*sin(angle));
+	// SET_UVEC3("W_Eye", Position+Direction);
+	// glGetUnifomBlockIndex(programID, "Light");
+	
+	
+	SET_UVEC3("W_LightDir", (const GLfloat*) &light[0].pos);
 
 }

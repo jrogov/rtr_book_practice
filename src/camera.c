@@ -1,22 +1,14 @@
 #include "camera.h"
 
-static void rotateCamera(GLuint programID, movement_t *player , int32_t player_update ){
+static void spectatorCamera(GLuint programID, movement_t *player ){
 
-	//static float sublast_ticks = ((float) clock());
-	//float current_ticks;
-	//float cycle_time;
-	//current_ticks = ((float) clock());
-	//cycle_time = (current_ticks- last_ticks)/CLOCKS_PER_SEC;
-
-	//static GLfloat mousespeed = 2.5f;
-	static GLfloat angle = 0.0f;
-
+	static GLfloat angle[2] = {0.0f, sqrt(2)/2};
 
 	GLfloat verticalAngle, horizontalAngle;
 
 	static GLfloat FoV = FOV;
 
-	static glm::vec3 Position = glm::vec3( 0, 4, 5 );
+	static glm::vec3 Position = glm::vec3( 7, 5, 7 );
 	static glm::vec3 realUp = glm::vec3(0, 1, 0);
 
 	glm::vec3 Up;
@@ -26,8 +18,15 @@ static void rotateCamera(GLuint programID, movement_t *player , int32_t player_u
 	glm::mat4 Model, View, Projection;
 	glm::mat4 MVP;
 
+	globlight_t light = {
+									0.f, 0.f, 0.f,
+									5 * 1.0f, 5*1.0f, 5*1.0f,
+									10, 10, 10,
+									mut_func_rotation
+								};
 
-	angle+=0.03;
+
+	angle[0]+= 0.03;
 
 	horizontalAngle = player->camX ;
 	verticalAngle 	= 	player->camY ;
@@ -50,13 +49,9 @@ static void rotateCamera(GLuint programID, movement_t *player , int32_t player_u
 	Position += Right * 		(player->rl);
 	Position += realUp * 			(player->ud);
 
-	player->fb = fabs(player->fb) < 0.01? 0: (player->fb + ( -2*(player->fb > 0) + 1 ) * 0. * player->accFB);
-	player->rl = fabs(player->rl) < 0.01? 0: (player->rl + ( -2*(player->rl > 0) + 1 ) * 0. * player->accRL);
-	player->ud = fabs(player->ud) < 0.01? 0: (player->ud + ( -2*(player->ud > 0) + 1 ) * 0. * player->accUD);
-
 	 /* Swap Y and -Z for human-intuitive way */
-	Model = glm::mat4(1.0);
-
+	
+	
 	View = glm::lookAt(
 							Position,
 							Position+Direction,
@@ -65,24 +60,24 @@ static void rotateCamera(GLuint programID, movement_t *player , int32_t player_u
 
 	Projection = glm::perspective(FoV, ( (GLfloat) WIDTH)/HEIGHT, 0.1f, 100.0f);
 
-
 	MVP = Projection * View * Model;
+	glm::mat4 ViewModel = View * Model;
 
 	glUseProgram(programID);
 
-	GLint eye_loc = glGetUniformLocation( programID, "Eyecam");
-	glUniform3fv(eye_loc, 1, &(Position+Direction)[0]);
 
-	glm::mat4 ViewModel = View * Model;
-	GLint m_loc = glGetUniformLocation( programID, "Model" );
-	glUniformMatrix4fv(m_loc, 1, GL_FALSE, &(Model)[0][0]);
-	GLint vm_loc = glGetUniformLocation( programID, "ViewModel" );
-	glUniformMatrix4fv(vm_loc, 1, GL_FALSE, &(ViewModel)[0][0]);
-	GLint mvp_loc = glGetUniformLocation( programID, "MVP" );
-	glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, &(Projection * ViewModel)[0][0]);
 
-	GLint dir_loc = glGetUniformLocation(programID, "Dir");
-	glUniform3f(dir_loc, 5*cos(angle), 5, 5*sin(angle));
+	#define SET_UMAT4(name, data)	glUniformMatrix4fv( glGetUniformLocation( programID, name ) , 1, GL_FALSE, &((data))[0][0]);
+	#define SET_UVEC3(name, data) glUniform3fv( glGetUniformLocation( programID, name ) , 1, &(data)[0]);
+
+	SET_UMAT4("View", View);
+	SET_UMAT4("ViewModel", ViewModel)
+	SET_UMAT4("MVP", MVP)
+
+	light.mut_func(&light, angle);
+
+	SET_UVEC3("W_Eye", Position+Direction);
+	SET_UVEC3("W_LightDir", (const GLfloat*) &light.pos);
 
 }
 

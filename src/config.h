@@ -1,11 +1,11 @@
-#define HEIGHT 540
-#define WIDTH 960
+#define HEIGHT 1000
+#define WIDTH 1200
 
-#define POSX 1080
-#define POSY 0
+#define POSX 0
+#define POSY 1080
 
 #define MOUSE_SENSIVITY 2.0f
-#define PLAYER_SPEED 0.5f
+#define PLAYER_SPEED 0.15f
 #define PLAYER_ACC 0.05f
 
 #define LEVEL_SIZE 5.0f
@@ -13,57 +13,39 @@
 
 #define FOV ( 70.0f / 180.0f * 3.14f )
 
-
-static const GLfloat testLevelVertex[] = {
-											1.0, -1.0, -1.0,
-											1.0, -1.0, 1.0,
-											-1.0, -1.0, 1.0,
-											-1.0, -1.0, -1.0,
-											1.0, 1.0, -1.0,
-											1.0, 1.0, 1.0,
-											-1.0, 1.0, 1.0,
-											-1.0, 1.0, -1.0
-													};
-static const GLuint testLevelIndex[] = {
-											5-1, 1-1, 4-1,
-											5-1, 4-1, 8-1,
-
-											3-1, 7-1, 8-1,
-											3-1, 8-1, 4-1,
-
-											2-1, 6-1, 3-1,
-											6-1, 7-1, 3-1,
-
-											1-1, 5-1, 2-1,
-											5-1, 6-1, 2-1,
-
-											5-1, 8-1, 6-1,
-											8-1, 7-1, 6-1,
-
-											1-1, 2-1, 3-1,
-											1-1, 3-1, 4-1
-													};
-
+#include "movement.h"
 
 movement_t player = {
-		1.25*3.14f,
-		-0.4f,
-		0.0,
-		0.0,
-		0.0,
-		PLAYER_SPEED,
-		PLAYER_SPEED,
-		PLAYER_SPEED,
-		MOUSE_SENSIVITY,
-		MOUSE_SENSIVITY,
-		PLAYER_ACC,
-		PLAYER_ACC,
-		PLAYER_ACC
+
+		// 0., 0., 0.,
+		0.f, 5.f, -80.f,
+
+		0.0, 0.0, 0.0,
+
+		PLAYER_SPEED, PLAYER_SPEED, PLAYER_SPEED,
+		PLAYER_ACC,	PLAYER_ACC, PLAYER_ACC,
+		
+		0,
+		3.14f / 180 * 10,
+		MOUSE_SENSIVITY, MOUSE_SENSIVITY
 	};
 
 sprogram_info_t shader_info = { 
-	"shaders/simple.vs.glsl",
-	"shaders/simple.fs.glsl",
+	"shaders/exp.vs.glsl",
+	"shaders/exp.fs.glsl",
 	NULL,
 	NULL, NULL
 };
+
+globlight_t light[] = {
+								{
+									0.f, 0.f, 0.f,
+									50 * 1.0f, 50*1.0f, 50*1.0f,
+									// 30, 40, 70,
+									0,2,0,
+									mut_func_rotation
+								}
+
+							};
+
+const char* MODEL_PATH = "res/obj/suzscene_sm.obj";

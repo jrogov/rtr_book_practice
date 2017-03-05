@@ -24,7 +24,7 @@ GLuint load_texture( image_t* image
 		GL_UNSIGNED_BYTE,
 		image->pixels);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -55,7 +55,7 @@ GLuint fload_BMP_texture( const char* filename ){
 		return 0;
 	}
 
-	printf("[Texture Loaded] %s, %dx%d\n", filename, image->width, image->height);
+	wflog("INFO", "Loaded texture %s (%dx%d)", filename, image->width, image->height);
 
 	textureID = load_texture(image);
 
