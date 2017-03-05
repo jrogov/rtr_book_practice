@@ -26,8 +26,8 @@ all: $(TARGET)
 release : FORCE disable_debug all
 
 disable_debug :
-CXXFLAGS_DEBUG_BUILD := 
-CXXFLAGS_DEBUG_LINK :=
+	CXXFLAGS_DEBUG_BUILD := 
+	CXXFLAGS_DEBUG_LINK :=
 
 
 
