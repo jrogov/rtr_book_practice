@@ -26,7 +26,7 @@ str_ioerror(IO_stat_t stat)
 {
 	switch(stat){
 		CASE(IO_OK, "OK");
-		CASE(IO_NO_FILE_ERROR, "File not found found");
+		CASE(IO_NO_FILE_ERROR, "File not found");
 		CASE(IO_NAME_LENGTH_ERROR, "Long filename");
 		CASE(IO_EMPTY_FILE_ERROR, "Empty file");
 		CASE(IO_FILE_SIZE_ERROR, "File size error (for fixed buffers mostly)");
