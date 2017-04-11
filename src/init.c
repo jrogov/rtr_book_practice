@@ -8,7 +8,7 @@
 
 
 SDL_Window*
-initWindow( unsigned int width, unsigned int height, 
+initWindow( unsigned int width, unsigned int height,
 				const char* name,
 				unsigned int posx, unsigned int posy)
 {
@@ -25,7 +25,7 @@ initWindow( unsigned int width, unsigned int height,
 										posy,
 										width,
 										height,
-										SDL_WINDOW_SHOWN 
+										SDL_WINDOW_SHOWN
 											| SDL_WINDOW_OPENGL
 											);
 
@@ -42,6 +42,7 @@ initWindow( unsigned int width, unsigned int height,
 
 	glewExperimental = GL_TRUE;
 	glewError = glewInit();
+	glGetError();
 	if ( GLEW_OK != glewError ) wflog_fatal_error("GLEW init error (code: %d; glewcode: %d)", ECODE_GLEW, glewError);
 
 	if ( SDL_GL_SetSwapInterval( 1 ) < 0 ) FATAL( "Vsync Init Error", ECODE_SDL_VSYNC );

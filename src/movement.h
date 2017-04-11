@@ -5,14 +5,16 @@
 typedef struct
 {
 	GLfloat x, y, z;
-	
+
 	GLfloat fb, rl, ud;
-	
+
 	GLfloat speedFB, speedRL, speedUD;
 	GLfloat accFB, accRL, accUD;
-	
+
 	GLfloat camX, camY;
 	GLfloat camX_sens, camY_sens;
+
+	glm::mat4 Model, View, Projection;
 } movement_t;
 
 #endif /* _MOVEMENT_H_ */
