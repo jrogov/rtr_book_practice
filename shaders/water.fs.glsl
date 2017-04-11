@@ -10,12 +10,14 @@ in vec3 C_LightDir;
 
 in vec3 ShadeLo;
 
-out vec3 color;
+out vec4 color;
 
 uniform mat4 ViewModel;
 uniform mat4 View;
 uniform mat4 MVP;
 uniform mat4 Model;
+
+uniform vec4 water_color;
 
 uniform sampler2D textureSampler;
 uniform sampler2D normalSampler;
@@ -43,6 +45,7 @@ vec3 Shade_v2(
 	vec3 Norm,
 	float m);
 
+/* info = position.y, velocity.y, normal.x, normal.z */
 
 void main(){
 
@@ -50,21 +53,14 @@ void main(){
 
 	vec3 Lo;
 
+	vec4 water_tex = vec4(texture( textureSampler, UV));
 	Lo = Shade_v2(C_LightDir,
 		C_Eye,
-		normalize(C_Normal - vec3(View * vec4(texture( normalSampler, UV).rgb, 0) )),
+		normalize(C_Normal - vec3(View * (vec4(water_tex.g, 0.5, water_tex.a, 0)) )),
 		50);
-	// Lo = Shade_v2(C_LightDir, C_Eye, C_Normal, 50);
 
-	// color = AmbientColor + ShadeLo + 0.001 * texture( textureSampler, UV).rgb ;
+	color = water_color + 3*vec4(Lo, 0.1);
 
-	color = texture( textureSampler, UV).rgb + 3*Lo;
-	// float coef = texture( textureSampler, UV).r;
-	// color = vec3(0.071, 0.25, 0.56) * (1-coef) + coef * vec3(0.66, 0.25, 0.65);
-	// float temp = texture( textureSampler, UV).r;
-	// color = vec3(temp, 0,0);
-	// color = texture( textureSampler, UV).rgb;
-	// color = texture( textureSampler, UV).rba + 3*Lo;
 
 }
 
