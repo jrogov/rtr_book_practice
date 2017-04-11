@@ -219,6 +219,15 @@ fload_program( sprogram_info_t* info, GLuint *program)
 	return IO_OK;
 }
 
+IO_stat_t 
+fload_simple_program(const char* vs_filename, const char* fs_filename, GLuint* programID)
+{
+	sprogram_info_t info = {NULL, NULL, NULL, NULL, NULL};
+	info.vertex_shader_file = vs_filename;
+	info.fragment_shader_file = fs_filename;
+	return fload_program(&info, programID);
+}
+
 static IO_stat_t load_shader_source(const char* filename, GLuint *shader, GLenum type){
 
 	GLchar buffer[BUFSIZE];
@@ -245,7 +254,7 @@ static IO_stat_t load_shader_source(const char* filename, GLuint *shader, GLenum
 	f = fopen(filename, "r");
 	if( NULL == f ) {
 		
-		wflog( "Failed to load shaderfile %s: %s", filename, str_ioerror(get_last_iostat()) ); 
+		wflog( "ERROR", "Failed to load shaderfile %s: %s", filename, str_ioerror(get_last_iostat()) ); 
 		return get_last_iostat();
 	}
 

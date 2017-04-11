@@ -2,6 +2,7 @@
 #define _SHADER_H_
 
 #include <GL/glew.h>
+#include "stdio.h"
 
 /* Various statuses for IO functions */
 
@@ -22,7 +23,7 @@ typedef struct
 	const char* geometry_shader_file;
 	const char* tess_control_shader_file;
 	const char* tess_evaluation_shader_file;
-} 
+}
 sprogram_info_t;
 
 
@@ -41,8 +42,15 @@ IO_stat_t load_shader(const char* filename, GLuint *shader, GLenum type);
 	If some _sfile is NULL, this shader won't be compiled and linked to program
 */
 
-IO_stat_t 
+IO_stat_t
 fload_program( sprogram_info_t* info, GLuint *program);
+
+/*
+	Load simple (i.e. vertex + fragment shaders) program
+*/
+
+IO_stat_t
+fload_simple_program(const char* vs_filename, const char* fs_filename, GLuint* programID);
 
 /*	DEBUG */
 
